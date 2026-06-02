@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <style>
+    .proc { fill:#fff3bf; stroke:#d69e2e; stroke-width:2 }
+    .store { fill:#f0f7ff; stroke:#2b6cb0; stroke-width:2 }
+    .actor { fill:#f0fff4; stroke:#2f855a; stroke-width:2 }
+    .text { font: 13px sans-serif; fill:#1a202c }
+    .small { font: 12px monospace; fill:#2d3748 }
+    .line { stroke:#2d3748; stroke-width:2; marker-end:url(#arrow) }
+  </style>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2d3748" />
+    </marker>
+  </defs>
+
+  <!-- Actors -->
+  <rect x="40" y="40" width="160" height="80" class="actor" rx="8"/>
+  <text x="60" y="70" class="text">Chủ nhà</text>
+  <rect x="40" y="140" width="160" height="80" class="actor" rx="8"/>
+  <text x="60" y="170" class="text">Khách hàng</text>
+  <rect x="40" y="240" width="160" height="80" class="actor" rx="8"/>
+  <text x="60" y="270" class="text">Nhân viên</text>
+
+  <!-- Processes -->
+  <rect x="260" y="40" width="240" height="80" class="proc" rx="8"/>
+  <text x="280" y="65" class="text">0. Xử lý thông tin ký gửi</text>
+  <rect x="260" y="140" width="240" height="80" class="proc" rx="8"/>
+  <text x="280" y="165" class="text">1. Tiếp nhận & duyệt ký gửi</text>
+  <rect x="260" y="240" width="240" height="80" class="proc" rx="8"/>
+  <text x="280" y="265" class="text">2. Lưu hợp đồng & theo dõi tiền</text>
+  <rect x="260" y="360" width="240" height="80" class="proc" rx="8"/>
+  <text x="280" y="385" class="text">10. Kiểm tra hạn 6 tháng</text>
+  <rect x="540" y="360" width="240" height="80" class="proc" rx="8"/>
+  <text x="560" y="385" class="text">11. Xử lý hoàn tiền / khấu trừ</text>
+
+  <!-- Data stores -->
+  <rect x="840" y="40" width="300" height="80" class="store" rx="8"/>
+  <text x="860" y="65" class="text">Nhà ký gửi</text>
+  <rect x="840" y="140" width="300" height="80" class="store" rx="8"/>
+  <text x="860" y="165" class="text">Chủ nhà</text>
+  <rect x="840" y="240" width="300" height="80" class="store" rx="8"/>
+  <text x="860" y="265" class="text">Hợp đồng ký gửi</text>
+  <rect x="840" y="340" width="300" height="80" class="store" rx="8"/>
+  <text x="860" y="365" class="text">Hợp đồng thuê</text>
+  <rect x="840" y="440" width="300" height="80" class="store" rx="8"/>
+  <text x="860" y="465" class="text">Lịch sử làm việc</text>
+
+  <!-- Flows -->
+  <line x1="200" y1="80" x2="260" y2="80" class="line"/>
+  <text x="220" y="75" class="small">Gửi thông tin ký gửi</text>
+
+  <line x1="200" y1="180" x2="260" y2="180" class="line"/>
+  <text x="220" y="175" class="small">Yêu cầu xem nhà</text>
+
+  <line x1="200" y1="280" x2="260" y2="280" class="line"/>
+  <text x="220" y="275" class="small">Nhân viên duyệt/gửi hợp đồng</text>
+
+  <line x1="500" y1="280" x2="840" y2="280" class="line"/>
+  <text x="620" y="270" class="small">Lưu HĐ ký gửi</text>
+
+  <line x1="500" y1="420" x2="840" y2="420" class="line"/>
+  <text x="620" y="410" class="small">Tạo HĐ thuê / hoa hồng</text>
+
+  <line x1="500" y1="440" x2="840" y2="460" class="line"/>
+  <text x="620" y="450" class="small">Ghi nhận lịch sử làm việc</text>
+
+  <!-- 6-month check -->
+  <line x1="380" y1="420" x2="540" y2="420" class="line"/>
+  <text x="430" y="410" class="small">Job: scan hợp đồng (cron)</text>
+
+  <line x1="660" y1="420" x2="840" y2="420" class="line"/>
+  <text x="740" y="430" class="small">Đẩy vào hàng chờ hoàn tiền</text>
+
+  <line x1="840" y1="420" x2="960" y2="420" class="line"/>
+  <text x="900" y="410" class="small">deposit_return_queue</text>
+
+  <line x1="960" y1="420" x2="540" y2="420" class="line"/>
+  <text x="750" y="450" class="small">Processor: thực hiện hoàn tiền / khấu trừ</text>
+
+  <text x="40" y="860" font-size="12" fill="#718096">DFD Level 0 (tập trung vào luồng 6 tháng): job cron quét hợp đồng ký gửi → deposit queue → process hoàn tiền/khấu trừ → cập nhật hợp đồng + ghi log + thông báo chủ nhà</text>
+</svg>

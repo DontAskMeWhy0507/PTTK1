@@ -1,0 +1,375 @@
+openapi: 3.0.3
+info:
+  title: PTTK Real Estate Rental Management API
+  description: API for the current SQLite-based demo application.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: http://localhost:3001/api
+    description: Alternate local port
+
+tags:
+  - name: Auth
+  - name: Properties
+  - name: Contracts
+  - name: Appointments
+  - name: Interactions
+  - name: Commissions
+  - name: Jobs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string }
+        phone_number: { type: string }
+        role: { type: string, enum: [landlord, customer, employee, admin] }
+        is_member: { type: boolean }
+        status: { type: string, enum: [active, inactive, suspended] }
+    Property:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        chu_nha_id: { type: string, format: uuid }
+        loai_nha: { type: string }
+        dien_tich: { type: number }
+        huong_nha: { type: string }
+        so_luong_phong: { type: integer }
+        dia_chi_chi_tiet: { type: string }
+        gia_de_xuat: { type: number }
+        hien_trang: { type: string }
+        hien_thi_chi_tiet: { type: boolean }
+    DepositContract:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nha_cho_thue_id: { type: string, format: uuid }
+        nhan_vien_id: { type: string, format: uuid }
+        ngay_ky: { type: string, format: date }
+        tien_dam_bao: { type: number }
+        trang_thai: { type: string, enum: [draft, pending_deposit, active, terminated, cancelled] }
+        thoi_han_thang: { type: integer }
+        ngay_thanh_toan_dam_bao: { type: string, format: date }
+        ngay_het_han: { type: string, format: date }
+    RentalContract:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        khach_hang_id: { type: string, format: uuid }
+        nha_cho_thue_id: { type: string, format: uuid }
+        nhan_vien_id: { type: string, format: uuid }
+        ngay_ky: { type: string, format: date }
+        gia_tri_hop_dong: { type: number }
+        phan_tram_hoa_hong: { type: number }
+        tien_hoa_hong: { type: number }
+        trang_thai: { type: string, enum: [draft, pending_sign, active, completed, cancelled] }
+    Appointment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        khach_hang_id: { type: string, format: uuid }
+        nha_cho_thue_id: { type: string, format: uuid }
+        nhan_vien_id: { type: string, format: uuid }
+        ngay_gio: { type: string, format: date-time }
+        trang_thai: { type: string, enum: [pending, confirmed, completed, cancelled, no_show] }
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new landlord or customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name, role]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                full_name: { type: string }
+                phone_number: { type: string }
+                role: { type: string, enum: [landlord, customer] }
+      responses:
+        '201':
+          description: User created
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and get JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login success
+
+  /properties:
+    get:
+      tags: [Properties]
+      summary: Search and list visible properties
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of properties
+
+  /properties/deposit-request:
+    post:
+      tags: [Properties]
+      security: [{ bearerAuth: [] }]
+      summary: Landlord submits a property for deposit flow
+      responses:
+        '201':
+          description: Property and deposit contract created
+
+  /properties/pay-deposit/{contract_id}:
+    post:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Mark deposit as paid by landlord
+      parameters:
+        - name: contract_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deposit payment confirmed
+
+  /contracts/deposit:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: List deposit contracts of current landlord
+      responses:
+        '200':
+          description: Contracts list
+
+  /contracts/deposit/{id}:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Get deposit contract detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Contract detail
+
+  /contracts/deposit/{id}/cancel:
+    post:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Landlord cancels a deposit contract and may create refund request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deposit contract cancelled, refund created if eligible
+
+  /contracts/rental/my:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Customer or employee views rental contracts
+      responses:
+        '200':
+          description: Rental contract list
+
+  /contracts/rental/{id}:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Customer or employee views rental contract detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Rental contract detail
+
+  /contracts/{type}/{id}/documents:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: List uploaded contract files
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: string, enum: [deposit, rental] }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Contract file list
+    post:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Upload contract file as base64 JSON payload
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: string, enum: [deposit, rental] }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ten_file, mime_type, kich_thuoc, noi_dung_base64]
+              properties:
+                ten_file: { type: string }
+                mime_type: { type: string }
+                kich_thuoc: { type: integer }
+                noi_dung_base64: { type: string }
+      responses:
+        '201':
+          description: File uploaded
+
+  /contracts/documents/{documentId}:
+    get:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Download uploaded contract file metadata and base64 content
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Contract file with base64 content
+
+  /appointments:
+    post:
+      tags: [Appointments]
+      security: [{ bearerAuth: [] }]
+      summary: Customer creates appointment request
+      responses:
+        '201':
+          description: Appointment created
+
+  /appointments/my:
+    get:
+      tags: [Appointments]
+      security: [{ bearerAuth: [] }]
+      summary: Current user views own appointments
+      responses:
+        '200':
+          description: Appointment list
+
+  /employee/appointments:
+    get:
+      tags: [Appointments]
+      security: [{ bearerAuth: [] }]
+      summary: Employee views appointments
+      responses:
+        '200':
+          description: Appointment list for staff
+
+  /employee/appointments/{id}:
+    patch:
+      tags: [Appointments]
+      security: [{ bearerAuth: [] }]
+      summary: Employee updates appointment status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Appointment updated
+
+  /employee/contracts/rental:
+    post:
+      tags: [Contracts]
+      security: [{ bearerAuth: [] }]
+      summary: Employee creates rental contract and commission
+      responses:
+        '201':
+          description: Rental contract created
+
+  /employee/interactions:
+    get:
+      tags: [Interactions]
+      security: [{ bearerAuth: [] }]
+      summary: Employee views own interaction history
+      responses:
+        '200':
+          description: Interaction list
+    post:
+      tags: [Interactions]
+      security: [{ bearerAuth: [] }]
+      summary: Employee logs customer interaction
+      responses:
+        '201':
+          description: Interaction created
+
+  /employee/properties/{id}/review:
+    patch:
+      tags: [Properties]
+      security: [{ bearerAuth: [] }]
+      summary: Employee updates property review/legal display state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Property review updated
+
+  /employee/commissions:
+    get:
+      tags: [Commissions]
+      security: [{ bearerAuth: [] }]
+      summary: Employee views commission history
+      responses:
+        '200':
+          description: Commission summary
+
+  /admin/jobs/check-expired-deposits:
+    post:
+      tags: [Jobs]
+      summary: Reserved in spec, current app uses cron instead of public endpoint
+      responses:
+        '200':
+          description: Placeholder

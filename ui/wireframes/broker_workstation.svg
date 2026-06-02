@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#f7fafc"/>
+
+  <!-- Side Navigation -->
+  <rect width="240" height="800" fill="#1a202c"/>
+  <text x="20" y="40" fill="white" font-weight="bold">BROKER WORKSTATION</text>
+  <text x="30" y="100" fill="#cbd5e0">Tiếp nhận ký gửi</text>
+  <rect x="15" y="130" width="210" height="35" rx="4" fill="#4a5568"/>
+  <text x="30" y="153" fill="white">Quản lý lịch hẹn</text>
+  <text x="30" y="193" fill="#cbd5e0">Hợp đồng & Hoa hồng</text>
+  <text x="30" y="233" fill="#cbd5e0">Lịch sử làm việc</text>
+
+  <!-- Top bar -->
+  <rect x="240" width="960" height="60" fill="white" stroke="#e2e8f0"/>
+  <text x="270" y="38" font-size="16" font-weight="bold">Lịch hẹn khách hàng (Hôm nay)</text>
+
+  <!-- Main Content: Schedule -->
+  <rect x="270" y="80" width="900" height="400" rx="8" fill="white" stroke="#e2e8f0"/>
+  <rect x="270" y="80" width="900" height="40" rx="8" fill="#edf2f7"/>
+  <text x="290" y="105" font-weight="bold" font-size="12">Giờ</text>
+  <text x="380" y="105" font-weight="bold" font-size="12">Khách hàng</text>
+  <text x="550" y="105" font-weight="bold" font-size="12">Bất động sản</text>
+  <text x="850" y="105" font-weight="bold" font-size="12">Trạng thái</text>
+  <text x="1000" y="105" font-weight="bold" font-size="12">Thao tác</text>
+
+  <!-- Row 1 -->
+  <text x="290" y="140" font-size="12">09:00</text>
+  <text x="380" y="140" font-size="12">Anh Thuê Nhà (kh-001)</text>
+  <text x="550" y="140" font-size="12">Nha cho thue 001 - Vinhomes</text>
+  <rect x="850" y="125" width="80" height="20" rx="10" fill="#fef3c7"/>
+  <text x="865" y="139" fill="#92400e" font-size="10">Đã xác nhận</text>
+  <text x="1000" y="140" fill="#3182ce" font-size="12">Check-in | Hủy</text>
+
+  <!-- Interaction Form -->
+  <rect x="270" y="500" width="900" height="260" rx="8" fill="white" stroke="#e2e8f0"/>
+  <text x="290" y="530" font-weight="bold">Ghi nhận lịch sử làm việc / Site visit</text>
+
+  <rect x="290" y="550" width="400" height="35" rx="4" fill="white" stroke="#cbd5e0"/>
+  <text x="300" y="572" fill="#718096">Chọn khách hàng...</text>
+
+  <rect x="710" y="550" width="440" height="35" rx="4" fill="white" stroke="#cbd5e0"/>
+  <text x="720" y="572" fill="#718096">Loại: Đi thực địa (Site visit)</text>
+
+  <rect x="290" y="600" width="860" height="100" rx="4" fill="white" stroke="#cbd5e0"/>
+  <text x="300" y="625" fill="#718096">Nội dung trao đổi, tình trạng khách ưng nhà hay không...</text>
+
+  <rect x="980" y="715" width="170" height="35" rx="6" fill="#38a169"/>
+  <text x="1025" y="738" fill="white" font-weight="bold">Lưu kết quả</text>
+</svg>

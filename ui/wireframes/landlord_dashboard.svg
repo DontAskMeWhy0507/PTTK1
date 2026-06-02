@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
+  <rect width="1000" height="700" fill="#f7fafc"/>
+
+  <!-- Sidebar -->
+  <rect width="200" height="700" fill="#2d3748"/>
+  <text x="20" y="40" fill="white" font-weight="bold">LANDLORD PORTAL</text>
+  <rect x="10" y="80" width="180" height="35" rx="4" fill="#4a5568"/>
+  <text x="25" y="103" fill="white">Dashboard</text>
+  <text x="25" y="143" fill="#cbd5e0">Gửi ký gửi mới</text>
+  <text x="25" y="183" fill="#cbd5e0">Hợp đồng của tôi</text>
+  <text x="25" y="223" fill="#cbd5e0">Hoàn tiền / Tài chính</text>
+
+  <!-- Header -->
+  <rect x="200" width="800" height="60" fill="white" stroke="#e2e8f0"/>
+  <text x="220" y="38" font-size="18" font-weight="bold">Tổng quan tài sản ký gửi</text>
+
+  <!-- Stats -->
+  <rect x="220" y="80" width="180" height="80" rx="8" fill="white" stroke="#e2e8f0"/>
+  <text x="235" y="110" fill="#718096">Đang ký gửi</text>
+  <text x="235" y="140" font-size="24" font-weight="bold">03</text>
+
+  <rect x="420" y="80" width="180" height="80" rx="8" fill="white" stroke="#e2e8f0"/>
+  <text x="435" y="110" fill="#718096">Tổng tiền đảm bảo</text>
+  <text x="435" y="140" font-size="24" font-weight="bold" fill="#38a169">3.000.000đ</text>
+
+  <!-- Form/List Area -->
+  <rect x="220" y="180" width="750" height="480" rx="8" fill="white" stroke="#e2e8f0"/>
+  <text x="240" y="215" font-weight="bold">Danh sách nhà đang cho thuê</text>
+
+  <!-- Table Header -->
+  <rect x="240" y="235" width="710" height="35" fill="#edf2f7"/>
+  <text x="250" y="258" font-weight="bold" font-size="12">Địa chỉ</text>
+  <text x="450" y="258" font-weight="bold" font-size="12">Loại nhà</text>
+  <text x="580" y="258" font-weight="bold" font-size="12">Hạn 6 tháng</text>
+  <text x="750" y="258" font-weight="bold" font-size="12">Trạng thái HĐ</text>
+
+  <!-- Table Row 1 -->
+  <text x="250" y="290" font-size="12">Vinhomes Ocean Park, Gia Lâm</text>
+  <text x="450" y="290" font-size="12">Chung cư</text>
+  <text x="580" y="290" font-size="12" fill="#e53e3e">Còn 15 ngày</text>
+  <text x="750" y="290" font-size="12">Đang hiệu lực</text>
+  <rect x="880" y="275" width="60" height="25" rx="4" fill="#3182ce"/>
+  <text x="895" y="292" fill="white" font-size="10">Chi tiết</text>
+
+  <!-- Action Button -->
+  <rect x="780" y="100" width="180" height="40" rx="8" fill="#3182ce"/>
+  <text x="815" y="125" fill="white" font-weight="bold">+ Ký gửi nhà mới</text>
+</svg>

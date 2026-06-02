@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800" viewBox="0 0 1000 800">
+  <rect width="1000" height="800" fill="#f7fafc"/>
+
+  <!-- Nav -->
+  <rect width="1000" height="60" fill="white" stroke="#e2e8f0"/>
+  <text x="40" y="38" font-size="20" font-weight="bold" fill="#3182ce">PTTK Rental</text>
+  <text x="600" y="35" font-size="14">Tìm kiếm</text>
+  <text x="700" y="35" font-size="14">Lịch hẹn</text>
+  <text x="800" y="35" font-size="14">Hợp đồng thuê</text>
+  <circle cx="940" cy="30" r="15" fill="#cbd5e0"/>
+
+  <!-- Search Bar -->
+  <rect x="150" y="100" width="700" height="50" rx="25" fill="white" stroke="#cbd5e0"/>
+  <text x="180" y="132" fill="#a0aec0">Nhập khu vực, loại nhà, mức giá...</text>
+  <rect x="750" y="105" width="90" height="40" rx="20" fill="#3182ce"/>
+  <text x="775" y="130" fill="white" font-weight="bold">Tìm</text>
+
+  <!-- Filters -->
+  <rect x="150" y="170" width="100" height="30" rx="15" fill="#edf2f7"/>
+  <text x="170" y="190" font-size="12">Giá: Thấp - Cao</text>
+
+  <!-- Property List -->
+  <text x="40" y="240" font-size="18" font-weight="bold">Nhà cho thuê nổi bật</text>
+
+  <!-- Item 1 -->
+  <rect x="40" y="260" width="280" height="300" rx="12" fill="white" stroke="#e2e8f0"/>
+  <rect x="40" y="260" width="280" height="160" rx="12" fill="#cbd5e0"/> <!-- Image placeholder -->
+  <text x="60" y="445" font-weight="bold">Nhà riêng Nguyên Căn</text>
+  <text x="60" y="470" font-size="12" fill="#718096">Quận 1, TP.HCM • 45m2</text>
+  <text x="60" y="500" font-size="16" font-weight="bold" fill="#3182ce">15.000.000đ / tháng</text>
+  <rect x="60" y="520" width="240" height="30" rx="6" fill="#3182ce"/>
+  <text x="125" y="540" fill="white" font-size="12" font-weight="bold">Đặt lịch xem nhà</text>
+
+  <!-- Item 2 -->
+  <rect x="360" y="260" width="280" height="300" rx="12" fill="white" stroke="#e2e8f0"/>
+  <rect x="360" y="260" width="280" height="160" rx="12" fill="#cbd5e0"/>
+  <text x="380" y="445" font-weight="bold">Chung cư Vinhomes</text>
+  <text x="380" y="470" font-size="12" fill="#718096">Gia Lâm, Hà Nội • 75m2</text>
+  <text x="380" y="500" font-size="16" font-weight="bold" fill="#3182ce">12.000.000đ / tháng</text>
+  <rect x="380" y="520" width="240" height="30" rx="6" fill="#38a169"/>
+  <text x="445" y="540" fill="white" font-size="12" font-weight="bold">Đã là thành viên</text>
+
+  <!-- Member Benefits info -->
+  <rect x="40" y="600" width="920" height="150" rx="12" fill="#ebf8ff" stroke="#bee3f8"/>
+  <text x="70" y="640" font-size="18" font-weight="bold" fill="#2c5282">Đăng ký thành viên để xem thông tin chi tiết!</text>
+  <text x="70" y="670" fill="#2c5282">Xem chính xác địa chỉ, số điện thoại chủ nhà và nhận hỗ trợ ưu tiên từ môi giới.</text>
+  <rect x="70" y="690" width="150" height="40" rx="8" fill="#2c5282"/>
+  <text x="95" y="715" fill="white" font-weight="bold">Đăng ký ngay</text>
+</svg>

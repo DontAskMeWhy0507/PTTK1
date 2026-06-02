@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <style>
+    .box { fill:#f8f9fb; stroke:#2b6cb0; stroke-width:2; }
+    .title { font: bold 14px sans-serif; fill:#1a202c }
+    .col { font: 12px monospace; fill:#2d3748 }
+    .fk { fill:#c53030; font: 11px monospace }
+    .line { stroke:#2d3748; stroke-width:2; marker-end:url(#arrow) }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2d3748" />
+    </marker>
+  </defs>
+
+  <!-- Users -->
+  <rect x="40" y="40" width="260" height="120" class="box" rx="6"/>
+  <text x="60" y="60" class="title">users</text>
+  <text x="60" y="85" class="col">id (PK) : char(36)</text>
+  <text x="60" y="105" class="col">email</text>
+  <text x="60" y="125" class="col">password_hash, role, is_member</text>
+
+  <!-- chu_nha -->
+  <rect x="360" y="40" width="300" height="80" class="box" rx="6"/>
+  <text x="380" y="60" class="title">chu_nha</text>
+  <text x="380" y="85" class="col">id (PK)</text>
+  <text x="380" y="105" class="col">user_id (FK → users.id)</text>
+
+  <!-- khach_hang -->
+  <rect x="360" y="140" width="300" height="100" class="box" rx="6"/>
+  <text x="380" y="160" class="title">khach_hang</text>
+  <text x="380" y="185" class="col">id (PK)</text>
+  <text x="380" y="205" class="col">user_id (FK → users.id)</text>
+  <text x="380" y="225" class="col">nhan_vien_id (FK → users.id)</text>
+
+  <!-- nha_cho_thue -->
+  <rect x="40" y="200" width="300" height="140" class="box" rx="6"/>
+  <text x="60" y="220" class="title">nha_cho_thue</text>
+  <text x="60" y="245" class="col">id (PK)</text>
+  <text x="60" y="265" class="col">chu_nha_id (FK → chu_nha.id)</text>
+  <text x="60" y="285" class="col">loai_nha, dien_tich, dia_chi_chi_tiet</text>
+
+  <!-- hop_dong_ky_gui -->
+  <rect x="40" y="380" width="340" height="140" class="box" rx="6"/>
+  <text x="60" y="400" class="title">hop_dong_ky_gui</text>
+  <text x="60" y="425" class="col">id (PK)</text>
+  <text x="60" y="445" class="col">nha_cho_thue_id (FK → nha_cho_thue.id)</text>
+  <text x="60" y="465" class="col">nhan_vien_id (FK → users.id)</text>
+  <text x="60" y="485" class="col">tien_dam_bao, ngay_het_han, thoi_han_thang</text>
+
+  <!-- hop_dong_thue -->
+  <rect x="420" y="380" width="340" height="140" class="box" rx="6"/>
+  <text x="440" y="400" class="title">hop_dong_thue</text>
+  <text x="440" y="425" class="col">id (PK)</text>
+  <text x="440" y="445" class="col">khach_hang_id (FK → khach_hang.id)</text>
+  <text x="440" y="465" class="col">nha_cho_thue_id (FK → nha_cho_thue.id)</text>
+  <text x="440" y="485" class="col">gia_tri, phan_tram_hoa_hong, tien_hoa_hong</text>
+
+  <!-- lich_hen -->
+  <rect x="800" y="40" width="320" height="100" class="box" rx="6"/>
+  <text x="820" y="60" class="title">lich_hen</text>
+  <text x="820" y="85" class="col">id (PK)</text>
+  <text x="820" y="105" class="col">khach_hang_id, nha_cho_thue_id, nhan_vien_id, ngay_gio</text>
+
+  <!-- lich_su_lam_viec -->
+  <rect x="800" y="160" width="320" height="100" class="box" rx="6"/>
+  <text x="820" y="180" class="title">lich_su_lam_viec</text>
+  <text x="820" y="205" class="col">id (PK)</text>
+  <text x="820" y="225" class="col">nhan_vien_id, khach_hang_id, ngay_gio, noi_dung_trao_doi</text>
+
+  <!-- deposit_return_queue -->
+  <rect x="800" y="300" width="320" height="100" class="box" rx="6"/>
+  <text x="820" y="320" class="title">deposit_return_queue</text>
+  <text x="820" y="345" class="col">id (PK)</text>
+  <text x="820" y="365" class="col">hop_dong_ky_gui_id (FK), action_type, return_amount</text>
+
+  <!-- hoa_hong_log -->
+  <rect x="420" y="240" width="300" height="100" class="box" rx="6"/>
+  <text x="440" y="260" class="title">hoa_hong_log</text>
+  <text x="440" y="285" class="col">id (PK)</text>
+  <text x="440" y="305" class="col">nhan_vien_id (FK), hop_dong_thue_id, so_tien, loai, trang_thai</text>
+
+  <!-- Relationships (arrows) -->
+  <line x1="300" y1="100" x2="360" y2="100" class="line" />
+  <text x="330" y="92" class="col">user_id</text>
+
+  <line x1="300" y1="260" x2="360" y2="230" class="line" />
+  <text x="330" y="250" class="col">chu_nha_id</text>
+
+  <line x1="200" y1="320" x2="200" y2="380" class="line" />
+  <text x="170" y="350" class="col">nha_cho_thue_id</text>
+
+  <line x1="200" y1="420" x2="420" y2="420" class="line" />
+  <text x="310" y="410" class="col">hop_dong_ky_gui → nha_cho_thue</text>
+
+  <line x1="360" y1="190" x2="420" y2="240" class="line" />
+  <text x="380" y="210" class="col">khach_hang_id</text>
+
+  <line x1="660" y1="420" x2="800" y2="350" class="line" />
+  <text x="730" y="400" class="col">hop_dong_thue_id</text>
+
+  <line x1="660" y1="280" x2="760" y2="320" class="line" />
+  <text x="700" y="300" class="col">hoa_hong → hop_dong_thue</text>
+
+  <line x1="420" y1="420" x2="820" y2="350" class="line" />
+  <text x="600" y="420" class="col">hop_dong_ky_gui -> deposit_return_queue</text>
+
+  <text x="40" y="860" font-size="12" fill="#718096">ERD (simplified) - primary keys, main foreign keys and important attributes shown. See db/schema.sql for full DDL.</text>
+</svg>
