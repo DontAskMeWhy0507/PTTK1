@@ -5,6 +5,6 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/', authMiddleware, appointmentController.createAppointment);
 router.get('/my', authMiddleware, appointmentController.getMyAppointments);
-router.patch('/:id', authMiddleware, appointmentController.updateMyAppointment);
+router.patch('/:id', authMiddleware, appointmentController.updateAppointment);
 
 module.exports = router;

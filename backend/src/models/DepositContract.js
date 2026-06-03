@@ -22,7 +22,7 @@ const DepositContract = sequelize.define('DepositContract', {
     defaultValue: 1000000.00
   },
   trang_thai: {
-    type: DataTypes.ENUM('draft', 'pending_deposit', 'active', 'terminated', 'cancelled'),
+    type: DataTypes.ENUM('draft', 'pending_deposit', 'paid', 'active', 'terminated', 'cancelled'),
     defaultValue: 'draft'
   },
   thoi_han_thang: {

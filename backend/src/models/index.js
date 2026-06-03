@@ -8,12 +8,19 @@ const Commission = require('./Commission');
 const Interaction = require('./Interaction');
 const Refund = require('./Refund');
 const ContractDocument = require('./ContractDocument');
+const TransactionLog = require('./TransactionLog');
 
 Property.hasOne(DepositContract, { foreignKey: 'nha_cho_thue_id' });
 DepositContract.belongsTo(Property, { foreignKey: 'nha_cho_thue_id' });
 
 User.hasMany(Property, { foreignKey: 'chu_nha_id' });
 Property.belongsTo(User, { foreignKey: 'chu_nha_id', as: 'Landlord' });
+
+User.hasMany(Property, { foreignKey: 'broker_id', as: 'ManagedProperties' });
+Property.belongsTo(User, { foreignKey: 'broker_id', as: 'Broker' });
+
+User.hasMany(User, { foreignKey: 'managed_by_broker_id', as: 'ManagedCustomers' });
+User.belongsTo(User, { foreignKey: 'managed_by_broker_id', as: 'ManagingBroker' });
 
 User.hasMany(DepositContract, { foreignKey: 'nhan_vien_id' });
 DepositContract.belongsTo(User, { foreignKey: 'nhan_vien_id', as: 'Broker' });
@@ -49,6 +56,11 @@ Interaction.belongsTo(User, { foreignKey: 'khach_hang_id', as: 'Customer' });
 Property.hasMany(Interaction, { foreignKey: 'nha_cho_thue_id' });
 Interaction.belongsTo(Property, { foreignKey: 'nha_cho_thue_id' });
 
+User.hasMany(TransactionLog, { foreignKey: 'user_id', as: 'TransactionLogs' });
+TransactionLog.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+User.hasMany(TransactionLog, { foreignKey: 'actor_id', as: 'ActorTransactionLogs' });
+TransactionLog.belongsTo(User, { foreignKey: 'actor_id', as: 'Actor' });
+
 User.hasMany(ContractDocument, { foreignKey: 'nguoi_tai_len_id' });
 ContractDocument.belongsTo(User, { foreignKey: 'nguoi_tai_len_id', as: 'Uploader' });
 RentalContract.hasMany(ContractDocument, {
@@ -80,5 +92,6 @@ module.exports = {
   Commission,
   Interaction,
   Refund,
-  ContractDocument
+  ContractDocument,
+  TransactionLog
 };

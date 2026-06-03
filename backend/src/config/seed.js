@@ -1,243 +1,240 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const { sequelize } = require('../config/database');
+const { sequelize, configureSqlite } = require('../config/database');
 require('../models');
 const {
   Appointment,
   Commission,
-  ContractDocument,
   DepositContract,
   Interaction,
   Property,
   Refund,
   RentalContract,
+  TransactionLog,
   User
 } = require('../models');
 
-const today = new Date().toISOString().split('T')[0];
-
-const textDocument = (text) => Buffer.from(text, 'utf8').toString('base64');
+const dateOnly = (date) => date.toISOString().split('T')[0];
 
 async function seed() {
+  console.log('--- Cleaning database ---');
+  await configureSqlite();
   await sequelize.sync({ force: true });
   console.log('--- Database created ---');
 
   const hash = await bcrypt.hash('123456', 10);
+  const today = new Date();
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const nextYear = new Date(today);
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  const expiredStart = new Date(today);
+  expiredStart.setMonth(expiredStart.getMonth() - 7);
 
+  console.log('--- Seeding users ---');
   const users = await User.bulkCreate([
-    { email: 'admin@pttk.vn', password_hash: hash, full_name: 'Admin He Thong', role: 'admin', phone_number: '0900000000', status: 'active' },
-    { email: 'nhanvien1@pttk.vn', password_hash: hash, full_name: 'Nguyen Van Moi Gioi', role: 'employee', phone_number: '0901112222', status: 'active' },
-    { email: 'nhanvien2@pttk.vn', password_hash: hash, full_name: 'Tran Thi Broker', role: 'employee', phone_number: '0903334444', status: 'active' },
-    { email: 'khachchunha1@gmail.com', password_hash: hash, full_name: 'Khach Ky Gui 1', role: 'customer', phone_number: '0911111111', status: 'active' },
-    { email: 'khachchunha2@gmail.com', password_hash: hash, full_name: 'Khach Ky Gui 2', role: 'customer', phone_number: '0922222222', status: 'active' },
-    { email: 'khach1@gmail.com', password_hash: hash, full_name: 'Anh Thue Nha', role: 'customer', phone_number: '0988888888', status: 'active' },
-    { email: 'khach2@gmail.com', password_hash: hash, full_name: 'Chi Thanh Vien', role: 'customer', phone_number: '0977777777', status: 'active' }
+    { email: 'admin@pttk.vn', password_hash: hash, full_name: 'Admin He Thong', phone_number: '0900000001', role: 'admin', status: 'active', is_member: true },
+    { email: 'staff1@pttk.vn', password_hash: hash, full_name: 'Nguyen Van Phong', phone_number: '0900000002', role: 'staff', status: 'active', is_member: true },
+    { email: 'broker1@pttk.vn', password_hash: hash, full_name: 'Le Quang Broker', phone_number: '0900000003', role: 'broker', status: 'active', is_member: true },
+    { email: 'broker2@pttk.vn', password_hash: hash, full_name: 'Pham Minh Broker', phone_number: '0900000004', role: 'broker', status: 'active', is_member: true },
+    { email: 'landlord1@gmail.com', password_hash: hash, full_name: 'Anh Chu Nha A', phone_number: '0900000005', role: 'landlord', status: 'active', is_member: true },
+    { email: 'landlord2@gmail.com', password_hash: hash, full_name: 'Chi Chu Nha B', phone_number: '0900000006', role: 'landlord', status: 'active', is_member: true },
+    { email: 'customer1@gmail.com', password_hash: hash, full_name: 'Khach Thue Mot', phone_number: '0900000007', role: 'customer', status: 'active', is_member: true },
+    { email: 'customer2@gmail.com', password_hash: hash, full_name: 'Khach Thue Hai', phone_number: '0900000008', role: 'customer', status: 'active', is_member: true }
   ], { returning: true });
 
-  const employee = users.find((user) => user.email === 'nhanvien1@pttk.vn');
-  const employee2 = users.find((user) => user.email === 'nhanvien2@pttk.vn');
-  const landlord = users.find((user) => user.email === 'khachchunha1@gmail.com');
-  const landlord2 = users.find((user) => user.email === 'khachchunha2@gmail.com');
-  const customer = users.find((user) => user.email === 'khach1@gmail.com');
-  const customer2 = users.find((user) => user.email === 'khach2@gmail.com');
+  const staff = users.find((u) => u.email === 'staff1@pttk.vn');
+  const broker1 = users.find((u) => u.email === 'broker1@pttk.vn');
+  const landlord1 = users.find((u) => u.email === 'landlord1@gmail.com');
+  const landlord2 = users.find((u) => u.email === 'landlord2@gmail.com');
+  const customer1 = users.find((u) => u.email === 'customer1@gmail.com');
+  const customer2 = users.find((u) => u.email === 'customer2@gmail.com');
 
+  console.log('--- Seeding properties ---');
   const properties = await Property.bulkCreate([
     {
-      chu_nha_id: landlord.id,
+      chu_nha_id: landlord1.id,
       loai_nha: 'Can ho chung cu',
-      dien_tich: 72,
+      dien_tich: 75.5,
       huong_nha: 'Dong Nam',
       so_luong_phong: 2,
-      dia_chi_chi_tiet: '123 Nguyen Trai, Quan 1, TP.HCM',
-      gia_de_xuat: 15000000,
-      hien_trang: 'Full noi that',
+      dia_chi_chi_tiet: 'P1205, Toa nha Vinhomes, Nam Tu Liem, Ha Noi',
+      gia_de_xuat: 12000000,
+      hien_trang: 'Moi ban giao, day du noi that',
+      broker_id: broker1.id,
       hien_thi_chi_tiet: true
     },
     {
-      chu_nha_id: landlord.id,
+      chu_nha_id: landlord1.id,
       loai_nha: 'Nha rieng',
-      dien_tich: 96,
-      huong_nha: 'Nam',
+      dien_tich: 48,
+      huong_nha: 'Tay',
       so_luong_phong: 3,
-      dia_chi_chi_tiet: '44 Le Van Sy, Quan 3, TP.HCM',
-      gia_de_xuat: 22000000,
-      hien_trang: 'Moi son sua',
-      hien_thi_chi_tiet: true
+      dia_chi_chi_tiet: 'So 12, Ngo 88, Cau Giay, Ha Noi',
+      gia_de_xuat: 8500000,
+      hien_trang: 'Dang cho nhan vien danh gia',
+      broker_id: null,
+      hien_thi_chi_tiet: false
     },
     {
       chu_nha_id: landlord2.id,
       loai_nha: 'Studio',
-      dien_tich: 34,
-      huong_nha: 'Bac',
+      dien_tich: 32,
+      huong_nha: 'Nam',
       so_luong_phong: 1,
-      dia_chi_chi_tiet: '9 Nguyen Hue, Quan 1, TP.HCM',
-      gia_de_xuat: 9500000,
-      hien_trang: 'Can trong, co bep rieng',
-      hien_thi_chi_tiet: false
-    },
-    {
-      chu_nha_id: landlord.id,
-      loai_nha: 'Phong tro',
-      dien_tich: 24,
-      huong_nha: 'Tay',
-      so_luong_phong: 1,
-      dia_chi_chi_tiet: '88 Phan Xich Long, Phu Nhuan, TP.HCM',
-      gia_de_xuat: 5200000,
-      hien_trang: 'Dang cho nop tien dam bao',
-      hien_thi_chi_tiet: false
+      dia_chi_chi_tiet: 'Studio S303, Thanh Xuan, Ha Noi',
+      gia_de_xuat: 6500000,
+      hien_trang: 'Het han ky gui, chua cho thue duoc',
+      broker_id: null,
+      hien_thi_chi_tiet: true
     }
   ], { returning: true });
 
-  const [condo, house, studio, room] = properties;
-
+  console.log('--- Seeding deposit contracts ---');
   const activeDeposit = await DepositContract.create({
-    nha_cho_thue_id: condo.id,
-    nhan_vien_id: employee.id,
-    ngay_ky: today,
+    nha_cho_thue_id: properties[0].id,
+    nhan_vien_id: staff.id,
+    ngay_ky: dateOnly(today),
     tien_dam_bao: 1000000,
     trang_thai: 'active',
-    thoi_han_thang: 6,
-    ngay_thanh_toan_dam_bao: today
+    thoi_han_thang: 6
   });
 
-  const rentedDeposit = await DepositContract.create({
-    nha_cho_thue_id: house.id,
-    nhan_vien_id: employee.id,
-    ngay_ky: today,
+  await DepositContract.create({
+    nha_cho_thue_id: properties[1].id,
+    nhan_vien_id: null,
     tien_dam_bao: 1000000,
-    trang_thai: 'terminated',
-    thoi_han_thang: 6,
-    ngay_thanh_toan_dam_bao: today,
-    ghi_chu: 'Nha da duoc thue, tien dam bao da khau tru vao hoa hong'
+    trang_thai: 'pending_deposit',
+    thoi_han_thang: 6
   });
 
   const expiredDeposit = await DepositContract.create({
-    nha_cho_thue_id: studio.id,
-    nhan_vien_id: employee2.id,
-    ngay_ky: '2025-06-01',
+    nha_cho_thue_id: properties[2].id,
+    nhan_vien_id: staff.id,
+    ngay_ky: dateOnly(expiredStart),
     tien_dam_bao: 1000000,
-    trang_thai: 'cancelled',
-    thoi_han_thang: 6,
-    ngay_thanh_toan_dam_bao: '2025-06-01',
-    ghi_chu: 'Qua 6 thang chua co khach thue, dang cho hoan tien'
-  });
-
-  await expiredDeposit.update({ ngay_het_han: '2025-12-01' });
-
-  const pendingDeposit = await DepositContract.create({
-    nha_cho_thue_id: room.id,
-    trang_thai: 'pending_deposit',
-    tien_dam_bao: 1000000,
-    thoi_han_thang: 6,
-    ghi_chu: 'Chu nha chua nop tien dam bao'
-  });
-
-  const rentalContract = await RentalContract.create({
-    khach_hang_id: customer.id,
-    nha_cho_thue_id: house.id,
-    nhan_vien_id: employee.id,
-    ngay_ky: today,
-    gia_tri_hop_dong: 264000000,
-    phan_tram_hoa_hong: 3,
     trang_thai: 'active',
-    ngay_bat_dau: today,
-    ngay_ket_thuc: '2027-06-02'
+    thoi_han_thang: 6
   });
 
-  await Commission.bulkCreate([
+  console.log('--- Seeding rental contract ---');
+  const paidRental = await RentalContract.create({
+    khach_hang_id: customer2.id,
+    nha_cho_thue_id: properties[0].id,
+    nhan_vien_id: broker1.id,
+    ngay_ky: dateOnly(today),
+    gia_tri_hop_dong: 144000000,
+    phan_tram_hoa_hong: 3,
+    trang_thai: 'paid',
+    ngay_bat_dau: dateOnly(today),
+    ngay_ket_thuc: dateOnly(nextYear)
+  });
+
+  await Commission.create({
+    nhan_vien_id: broker1.id,
+    hop_dong_thue_id: paidRental.id,
+    so_tien: paidRental.tien_hoa_hong,
+    loai: 'commission',
+    trang_thai: 'earned'
+  });
+
+  console.log('--- Seeding appointments ---');
+  await Appointment.bulkCreate([
     {
-      nhan_vien_id: employee.id,
-      hop_dong_thue_id: rentalContract.id,
-      so_tien: rentalContract.tien_hoa_hong,
-      loai: 'commission',
-      trang_thai: 'earned'
+      khach_hang_id: customer1.id,
+      nha_cho_thue_id: properties[0].id,
+      nhan_vien_id: broker1.id,
+      ngay_gio: tomorrow,
+      ghi_chu: 'Khach muon xem can ho chung cu',
+      trang_thai: 'confirmed',
+      last_message: 'Lich xem nha da duoc xac nhan vao ngay mai',
+      last_message_by: 'broker'
     },
     {
-      nhan_vien_id: employee.id,
-      hop_dong_thue_id: rentalContract.id,
-      so_tien: 1000000,
-      loai: 'deduction',
-      trang_thai: 'earned'
+      khach_hang_id: customer1.id,
+      nha_cho_thue_id: properties[2].id,
+      nhan_vien_id: broker1.id,
+      ngay_gio: nextWeek,
+      ghi_chu: 'Khach quan tam studio',
+      trang_thai: 'pending',
+      last_message: 'Toi muon xem studio nay',
+      last_message_by: 'customer'
     }
   ]);
 
-  await Refund.create({
-    hop_dong_ky_gui_id: expiredDeposit.id,
-    ngay_yeu_cau: today,
-    so_tien_hoan: 1000000,
-    trang_thai: 'pending',
-    ghi_chu: 'Hoan tien do het han 6 thang va chua cho thue duoc'
-  });
-
-  const appointment = await Appointment.create({
-    khach_hang_id: customer.id,
-    nha_cho_thue_id: condo.id,
-    nhan_vien_id: employee.id,
-    ngay_gio: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    ghi_chu: 'Khach muon xem can ho buoi chieu',
-    trang_thai: 'pending'
-  });
-
-  await Appointment.create({
-    khach_hang_id: customer2.id,
-    nha_cho_thue_id: condo.id,
-    nhan_vien_id: employee.id,
-    ngay_gio: new Date(Date.now() + 48 * 60 * 60 * 1000),
-    ghi_chu: 'Khach muon xem nha vao cuoi tuan',
-    trang_thai: 'confirmed'
-  });
-
+  console.log('--- Seeding interactions ---');
   await Interaction.bulkCreate([
     {
-      nhan_vien_id: employee.id,
-      khach_hang_id: customer.id,
-      nha_cho_thue_id: house.id,
+      nhan_vien_id: broker1.id,
+      khach_hang_id: customer1.id,
+      nha_cho_thue_id: properties[0].id,
       ngay_gio: new Date(),
-      noi_dung_trao_doi: 'Da dan khach di xem nha va chot hop dong thue',
-      loai_trao_doi: 'site_visit'
-    },
-    {
-      nhan_vien_id: employee.id,
-      khach_hang_id: customer2.id,
-      nha_cho_thue_id: condo.id,
-      ngay_gio: new Date(),
-      noi_dung_trao_doi: 'Da goi xac nhan lich xem can ho',
+      noi_dung_trao_doi: 'Da goi xac nhan nhu cau va hen lich xem nha.',
       loai_trao_doi: 'call'
-    }
-  ]);
-
-  const depositText = textDocument('Hop dong ky gui mau - Can ho chung cu - tien dam bao 1.000.000 VND');
-  const rentalText = textDocument('Hop dong thue mau - Nha rieng - gia tri 264.000.000 VND');
-
-  await ContractDocument.bulkCreate([
-    {
-      loai_hop_dong: 'deposit',
-      hop_dong_id: activeDeposit.id,
-      nguoi_tai_len_id: employee.id,
-      ten_file: 'hop-dong-ky-gui-can-ho.txt',
-      mime_type: 'text/plain',
-      kich_thuoc: Buffer.byteLength(depositText, 'base64'),
-      noi_dung_base64: depositText
     },
     {
-      loai_hop_dong: 'rental',
-      hop_dong_id: rentalContract.id,
-      nguoi_tai_len_id: employee.id,
-      ten_file: 'hop-dong-thue-nha-rieng.txt',
-      mime_type: 'text/plain',
-      kich_thuoc: Buffer.byteLength(rentalText, 'base64'),
-      noi_dung_base64: rentalText
+      nhan_vien_id: broker1.id,
+      khach_hang_id: customer2.id,
+      nha_cho_thue_id: properties[0].id,
+      ngay_gio: new Date(),
+      noi_dung_trao_doi: 'Khach da thanh toan hop dong thue mau.',
+      loai_trao_doi: 'meeting'
     }
   ]);
 
-  console.log('--- Seed data created ---');
-  console.log(`Sample active deposit contract: ${activeDeposit.id}`);
-  console.log(`Sample rented deposit contract: ${rentedDeposit.id}`);
-  console.log(`Sample expired deposit contract: ${expiredDeposit.id}`);
-  console.log(`Sample pending deposit contract: ${pendingDeposit.id}`);
-  console.log(`Sample rental contract: ${rentalContract.id}`);
-  console.log(`Sample appointment: ${appointment.id}`);
-  console.log('All accounts password: 123456');
+  console.log('--- Seeding refund and transaction logs ---');
+  const refund = await Refund.create({
+    hop_dong_ky_gui_id: expiredDeposit.id,
+    ngay_yeu_cau: dateOnly(today),
+    so_tien_hoan: 1000000,
+    trang_thai: 'pending',
+    ghi_chu: 'Mau yeu cau hoan tien do het han ky gui'
+  });
+
+  await TransactionLog.bulkCreate([
+    {
+      user_id: landlord1.id,
+      actor_id: landlord1.id,
+      loai_giao_dich: 'deposit_payment',
+      so_tien: 1000000,
+      doi_tuong: 'deposit_contract',
+      doi_tuong_id: activeDeposit.id,
+      mo_ta: 'Chu nha thanh toan tien dam bao ky gui'
+    },
+    {
+      user_id: customer2.id,
+      actor_id: customer2.id,
+      loai_giao_dich: 'rent_payment',
+      so_tien: paidRental.gia_tri_hop_dong,
+      doi_tuong: 'rental_contract',
+      doi_tuong_id: paidRental.id,
+      mo_ta: 'Khach thue thanh toan hop dong thue mau'
+    },
+    {
+      user_id: broker1.id,
+      actor_id: customer2.id,
+      loai_giao_dich: 'commission_earned',
+      so_tien: paidRental.tien_hoa_hong,
+      doi_tuong: 'rental_contract',
+      doi_tuong_id: paidRental.id,
+      mo_ta: 'Hoa hong moi gioi tu hop dong thue mau'
+    },
+    {
+      user_id: landlord2.id,
+      actor_id: staff.id,
+      loai_giao_dich: 'deposit_refund',
+      so_tien: refund.so_tien_hoan,
+      doi_tuong: 'refund',
+      doi_tuong_id: refund.id,
+      mo_ta: 'Yeu cau hoan tien dam bao mau'
+    }
+  ]);
+
+  console.log('--- Finished seeding ---');
+  console.log('Accounts password: 123456');
+  console.log('admin@pttk.vn | staff1@pttk.vn | broker1@pttk.vn');
+  console.log('landlord1@gmail.com | landlord2@gmail.com');
+  console.log('customer1@gmail.com | customer2@gmail.com');
   process.exit(0);
 }
 

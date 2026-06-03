@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { ContractDocument, DepositContract, Property, Refund, RentalContract, User } = require('../models');
+const { ContractDocument, DepositContract, Property, Refund, RentalContract, TransactionLog, User } = require('../models');
+const { logTransaction } = require('../utils/transactionLog');
 
 const documentAttributes = [
   'id',
@@ -19,8 +20,10 @@ const assertDepositAccess = async (req, id) => {
 
   const allowed = (
     req.user.role === 'admin' ||
+    req.user.role === 'staff' ||
+    req.user.role === 'broker' ||
     req.user.role === 'employee' ||
-    (req.user.role === 'landlord' && contract.Property?.chu_nha_id === req.user.id)
+    contract.Property?.chu_nha_id === req.user.id
   );
   if (!allowed) return { error: { status: 403, message: 'Khong co quyen truy cap hop dong nay' } };
 
@@ -33,7 +36,8 @@ const assertRentalAccess = async (req, id) => {
 
   const allowed = (
     req.user.role === 'admin' ||
-    (req.user.role === 'employee' && contract.nhan_vien_id === req.user.id) ||
+    req.user.role === 'staff' ||
+    (req.user.role === 'broker' && contract.nhan_vien_id === req.user.id) ||
     (req.user.role === 'customer' && contract.khach_hang_id === req.user.id)
   );
   if (!allowed) return { error: { status: 403, message: 'Khong co quyen truy cap hop dong nay' } };
@@ -54,19 +58,30 @@ const getDocuments = (type, contractId) => ContractDocument.findAll({
 exports.getMyDepositContracts = async (req, res) => {
   try {
     let where = {};
-    if (req.user.role === 'employee') {
-      where.nhan_vien_id = req.user.id;
-    } else if (req.user.role === 'admin') {
+    const role = req.user.role;
+
+    if (role === 'admin') {
       where = {};
+    } else if (role === 'staff' || role === 'employee') {
+      where = {}; // Staff xem het de phe duyet
+    } else if (role === 'broker') {
+      // Broker xem nhung nha minh dang duoc giao
+      const managedProperties = await Property.findAll({ where: { broker_id: req.user.id } });
+      const managedIds = managedProperties.map(p => p.id);
+      where.nha_cho_thue_id = { [Op.in]: managedIds };
+    } else if (role === 'landlord') {
+      // Chu nha xem chinh nha minh dang ky gui
+      const myProperties = await Property.findAll({ where: { chu_nha_id: req.user.id } });
+      const myPropertyIds = myProperties.map((p) => p.id);
+      where.nha_cho_thue_id = { [Op.in]: myPropertyIds };
     } else {
-      const properties = await Property.findAll({ where: { chu_nha_id: req.user.id } });
-      const propertyIds = properties.map((p) => p.id);
-      where.nha_cho_thue_id = { [Op.in]: propertyIds };
+      return res.status(403).json({ success: false, message: 'Chi Chu nha moi duoc xem hop dong ky gui' });
     }
 
     const contracts = await DepositContract.findAll({
       where,
-      include: [{ model: Property }, { model: Refund }]
+      include: [{ model: Property }, { model: Refund }],
+      order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: contracts });
@@ -100,7 +115,8 @@ exports.cancelDepositContract = async (req, res) => {
     if (access.error) return res.status(access.error.status).json({ success: false, message: access.error.message });
     const contract = access.contract;
 
-    if (req.user.role !== 'landlord' || contract.Property?.chu_nha_id !== req.user.id) {
+    // Cho phep admin hoac chu nha huy
+    if (req.user.role !== 'admin' && contract.Property?.chu_nha_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Ban khong duoc phep huy hop dong nay' });
     }
 
@@ -131,6 +147,16 @@ exports.cancelDepositContract = async (req, res) => {
         trang_thai: 'pending',
         ghi_chu: req.body?.ghi_chu || 'Hoan tien dam bao do het han 6 thang va chua co khach thue'
       });
+
+      await logTransaction({
+        user_id: contract.Property.chu_nha_id,
+        actor_id: req.user.id,
+        loai_giao_dich: 'deposit_refund',
+        so_tien: contract.tien_dam_bao,
+        doi_tuong: 'refund',
+        doi_tuong_id: refund.id,
+        mo_ta: 'Tao yeu cau hoan tien dam bao cho chu nha'
+      });
     }
 
     res.json({ success: true, message: 'Da xu ly yeu cau huy hop dong', data: { contract, refund } });
@@ -143,8 +169,8 @@ exports.getMyRentalContracts = async (req, res) => {
   try {
     const where = {};
     if (req.user.role === 'customer') where.khach_hang_id = req.user.id;
-    else if (req.user.role === 'employee') {
-      // Nhan vien xem duoc tat ca de biet ai quan ly
+    else if (['staff', 'broker', 'admin'].includes(req.user.role)) {
+      // Nhan vien va Admin xem duoc tat ca
     }
     else return res.status(403).json({ success: false, message: 'Khong co quyen xem hop dong thue' });
 
@@ -210,6 +236,16 @@ exports.uploadContractDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Loai hop dong khong hop le' });
     }
 
+    if (type === 'deposit') {
+      if (!['admin', 'staff'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Chi Nhan vien van phong moi duoc tai len hop dong ky gui' });
+      }
+    } else if (type === 'rental') {
+      if (!['admin', 'broker'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Chi Nhan vien moi gioi moi duoc tai len hop dong thue' });
+      }
+    }
+
     const access = await assertContractAccess(req, type, id);
     if (access.error) return res.status(access.error.status).json({ success: false, message: access.error.message });
 
@@ -245,6 +281,53 @@ exports.downloadContractDocument = async (req, res) => {
     if (access.error) return res.status(access.error.status).json({ success: false, message: access.error.message });
 
     res.json({ success: true, data: document });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.processRefund = async (req, res) => {
+  try {
+    if (!['admin', 'staff'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Chi nhan vien hoac admin moi duoc xu ly hoan tien' });
+    }
+
+    const refund = await Refund.findByPk(req.params.refundId);
+    if (!refund) return res.status(404).json({ success: false, message: 'Khong thay phieu hoan tien' });
+
+    await refund.update({
+      trang_thai: req.body.trang_thai || 'completed',
+      ghi_chu: req.body.ghi_chu || refund.ghi_chu,
+      ngay_hoan: req.body.trang_thai === 'completed' ? new Date().toISOString().split('T')[0] : refund.ngay_hoan
+    });
+
+    res.json({ success: true, message: 'Da cap nhat trang thai hoan tien', data: refund });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTransactionLogs = async (req, res) => {
+  try {
+    const where = {};
+    if (req.user.role === 'admin') {
+      // Admin xem tat ca
+    } else if (['staff', 'broker'].includes(req.user.role)) {
+      where.actor_id = req.user.id;
+    } else {
+      where.user_id = req.user.id;
+    }
+
+    const transactions = await TransactionLog.findAll({
+      where,
+      include: [
+        { model: User, as: 'User', attributes: ['id', 'full_name', 'email', 'role'] },
+        { model: User, as: 'Actor', attributes: ['id', 'full_name', 'email', 'role'] }
+      ],
+      order: [['thoi_gian', 'DESC']]
+    });
+
+    res.json({ success: true, data: transactions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

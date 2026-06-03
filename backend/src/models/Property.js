@@ -31,6 +31,10 @@ const Property = sequelize.define('Property', {
   gia_de_xuat: {
     type: DataTypes.DECIMAL(15, 2)
   },
+  broker_id: {
+    type: DataTypes.CHAR(36),
+    allowNull: true
+  },
   hien_trang: {
     type: DataTypes.STRING
   },

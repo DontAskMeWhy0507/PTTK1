@@ -25,12 +25,20 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING
   },
   role: {
-    type: DataTypes.ENUM('landlord', 'customer', 'employee', 'admin'),
+    type: DataTypes.ENUM('landlord', 'customer', 'staff', 'broker', 'admin'),
     defaultValue: 'customer'
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive', 'suspended'),
     defaultValue: 'active'
+  },
+  managed_by_broker_id: {
+    type: DataTypes.CHAR(36),
+    allowNull: true
+  },
+  is_member: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   tableName: 'users',

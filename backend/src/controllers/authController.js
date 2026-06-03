@@ -9,20 +9,31 @@ const publicUser = (user) => ({
   phone_number: user.phone_number,
   role: user.role,
   status: user.status,
-  is_member: user.role === 'customer'
+  is_member: !!user.is_member
 });
 
 exports.register = async (req, res) => {
   try {
-    if (req.user) {
-      return res.status(400).json({ success: false, message: 'Ban da dang nhap, khong the dang ky tai khoan moi' });
-    }
-    const { email, password, full_name, phone_number } = req.body;
+    const { email, password, full_name, phone_number, role } = req.body;
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ success: false, message: 'Email da ton tai' });
 
     const password_hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password_hash, full_name, phone_number, role: 'customer' });
+    
+    const allowedPublicRoles = ['customer', 'landlord'];
+    const allowedAdminRoles = ['customer', 'landlord', 'staff', 'broker', 'admin'];
+    const finalRole = req.user?.role === 'admin'
+      ? (allowedAdminRoles.includes(role) ? role : 'customer')
+      : (allowedPublicRoles.includes(role) ? role : 'customer');
+
+    const user = await User.create({
+      email,
+      password_hash,
+      full_name,
+      phone_number,
+      role: finalRole,
+      is_member: true
+    });
 
     res.status(201).json({ success: true, message: 'Dang ky thanh cong', data: publicUser(user) });
   } catch (error) {
@@ -49,13 +60,13 @@ exports.login = async (req, res) => {
         email: user.email,
         role: user.role,
         full_name: user.full_name,
-        is_member: user.role === 'customer'
+        is_member: !!user.is_member
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
-    res.json({ success: true, access_token: token, user: publicUser(user) });
+    res.json({ success: true, token, user: publicUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -68,11 +79,42 @@ exports.getUsers = async (req, res) => {
     }
 
     const users = await User.findAll({
-      attributes: ['id', 'email', 'full_name', 'phone_number', 'role', 'status', 'created_at', 'updated_at'],
+      attributes: ['id', 'email', 'full_name', 'phone_number', 'role', 'status', 'is_member', 'created_at', 'updated_at'],
       order: [['created_at', 'DESC']]
     });
 
     res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.adminUpdateUser = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Chi admin moi duoc quyen nay' });
+    }
+
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'Khong thay nguoi dung' });
+
+    const { email, password, full_name, phone_number, role, status, is_member } = req.body;
+    
+    const patch = {};
+    if (email) patch.email = email;
+    if (full_name) patch.full_name = full_name;
+    if (phone_number) patch.phone_number = phone_number;
+    if (role) patch.role = role;
+    if (status) patch.status = status;
+    if (is_member !== undefined) patch.is_member = is_member;
+    
+    if (password) {
+      patch.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    await user.update(patch);
+
+    res.json({ success: true, message: 'Da cap nhat thong tin nguoi dung', data: publicUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -87,15 +129,19 @@ exports.updateUserRole = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'Khong thay nguoi dung' });
 
-    const { role, status } = req.body;
-    if (role && !['customer', 'employee', 'admin'].includes(role)) {
+    const { role, status, is_member } = req.body;
+    if (role && !['customer', 'staff', 'broker', 'admin', 'landlord'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Vai tro khong hop le' });
     }
     if (status && !['active', 'inactive', 'suspended'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Trang thai khong hop le' });
     }
 
-    await user.update({ role: role || user.role, status: status || user.status });
+    await user.update({
+      role: role || user.role,
+      status: status || user.status,
+      is_member: is_member !== undefined ? is_member : user.is_member
+    });
 
     res.json({ success: true, message: 'Da cap nhat phan quyen', data: publicUser(user) });
   } catch (error) {

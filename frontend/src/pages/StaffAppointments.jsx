@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
-import api, { createRentalContract, logInteraction } from '../api';
-import { Check, X } from 'lucide-react';
+import api, { createRentalContract, logInteraction, updateAppointment } from '../api';
+import { Check, X, MessageSquare, Clock, Calendar } from 'lucide-react';
+
+import { useUI } from '../contexts/UIContext';
 
 const StaffAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [msgInput, setMsgInput] = useState({});
+  const [proposeDate, setProposeDate] = useState({});
+  const { showNotification } = useUI();
+  
   const [contractForm, setContractForm] = useState({
     gia_tri_hop_dong: '',
     phan_tram_hoa_hong: 3,
@@ -19,12 +25,15 @@ const StaffAppointments = () => {
 
   useEffect(() => { fetchAppointments(); }, []);
 
-  const updateStatus = async (id, status) => {
+  const handleAction = async (id, patch) => {
     try {
-      await api.patch(`/employee/appointments/${id}`, { trang_thai: status });
+      await updateAppointment(id, patch);
+      setMsgInput({ ...msgInput, [id]: '' });
+      setProposeDate({ ...proposeDate, [id]: null });
       fetchAppointments();
+      showNotification('Da cap nhat thong tin lich hen', 'success');
     } catch (e) {
-      alert('Loi cap nhat');
+      showNotification('Khong the cap nhat lich hen', 'error');
     }
   };
 
@@ -41,7 +50,6 @@ const StaffAppointments = () => {
 
   const saveInteraction = async () => {
     if (!selected || !interactionText.trim()) return;
-
     try {
       await logInteraction({
         khach_hang_id: selected.khach_hang_id,
@@ -51,15 +59,14 @@ const StaffAppointments = () => {
         loai_trao_doi: 'meeting'
       });
       setInteractionText('');
-      alert('Da luu lich su lam viec');
+      showNotification('Da luu lich su lam viec', 'success');
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the luu lich su');
+      showNotification(error.response?.data?.message || 'Khong the luu lich su', 'error');
     }
   };
 
   const closeRentalContract = async () => {
     if (!selected) return;
-
     try {
       await createRentalContract({
         appointment_id: selected.id,
@@ -69,75 +76,150 @@ const StaffAppointments = () => {
       });
       setSelected(null);
       fetchAppointments();
-      alert('Da tao hop dong thue va tinh hoa hong');
+      showNotification('Da tao hop dong thue va tinh hoa hong thanh cong!', 'success');
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the tao hop dong thue');
+      showNotification(error.response?.data?.message || 'Khong the tao hop dong thue', 'error');
     }
+  };
+
+  const statusMap = {
+    pending: { label: 'Khach dang cho', color: '#ecc94b' },
+    proposed: { label: 'Ban da de xuat', color: '#4299e1' },
+    confirmed: { label: 'Da chot lich', color: '#48bb78' },
+    rejected: { label: 'Khach tu choi', color: '#f56565' },
+    completed: { label: 'Da xem xong', color: '#718096' },
+    cancelled: { label: 'Da huy', color: '#a0aec0' }
   };
 
   return (
     <div>
-      <div className="topbar"><h1>Quan ly lich hen</h1></div>
-      <div className="table-container">
-        <table>
-          <thead><tr><th>Khach hang</th><th>Nha</th><th>Ngay gio</th><th>Trang thai</th><th>Thao tac</th></tr></thead>
-          <tbody>
-            {appointments.map((a) => (
-              <tr key={a.id}>
-                <td>{a.User?.full_name || '---'}</td>
-                <td>{a.Property?.dia_chi_chi_tiet || '---'}</td>
-                <td>{a.ngay_gio ? new Date(a.ngay_gio).toLocaleString('vi-VN') : '---'}</td>
-                <td><span className={`badge badge-${a.trang_thai === 'confirmed' || a.trang_thai === 'completed' ? 'active' : 'pending'}`}>{a.trang_thai}</span></td>
-                <td>
-                  {a.trang_thai === 'pending' && (
-                    <>
-                      <button className="btn btn-success btn-sm" onClick={() => updateStatus(a.id, 'confirmed')} style={{ marginRight: 4 }}><Check size={14} /> Xac nhan</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => updateStatus(a.id, 'cancelled')} style={{ marginRight: 4 }}><X size={14} /> Huy</button>
-                    </>
+      <div className="topbar"><h1>Quan ly lich hen xem nha</h1></div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 24 }}>
+        {appointments.map((a) => (
+          <div key={a.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700 }}>{a.User?.full_name}</h3>
+                <p style={{ fontSize: '13px', color: '#718096', marginTop: 4 }}>SĐT: {a.User?.phone_number || '---'}</p>
+              </div>
+              <span className="badge" style={{ background: statusMap[a.trang_thai]?.color || '#edf2f7', color: '#fff' }}>
+                {statusMap[a.trang_thai]?.label || a.trang_thai}
+              </span>
+            </div>
+
+            <div style={{ padding: '12px', background: '#f7fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#2d3748' }}>{a.Property?.loai_nha}</p>
+              <p style={{ fontSize: '13px', color: '#718096', marginTop: 4 }}>{a.Property?.dia_chi_chi_tiet}</p>
+            </div>
+
+            <div>
+              <p style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Clock size={16} color="#3182ce" /> 
+                <strong>Thoi gian:</strong> {a.ngay_gio ? new Date(a.ngay_gio).toLocaleString('vi-VN') : <span style={{ color: '#e53e3e', fontWeight: 700 }}>YEU CAU GUI LICH</span>}
+              </p>
+              {a.last_message && (
+                <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #edf2f7', fontSize: '14px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', marginBottom: 4 }}>
+                    {a.last_message_by === 'customer' ? 'Khach hang' : 'Ban'} nhan:
+                  </p>
+                  {a.last_message}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
+              {['pending', 'proposed', 'rejected', 'confirmed'].includes(a.trang_thai) && (
+                <>
+                  {!a.ngay_gio || a.trang_thai === 'rejected' ? (
+                    <button className="btn btn-primary" style={{ justifyContent: 'center', height: '48px' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date().toISOString().slice(0, 16)})}>
+                      <Calendar size={18} /> Gui lich hen cho khach
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-success" style={{ flex: 1 }} onClick={() => handleAction(a.id, { trang_thai: 'confirmed', message: 'Moi gioi da xac nhan lich hen nay.' })}>
+                        <Check size={16} /> Chot lich
+                      </button>
+                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => openWorkPanel(a)}>
+                        Lap hop dong
+                      </button>
+                    </div>
                   )}
-                  {['pending', 'confirmed'].includes(a.trang_thai) && (
-                    <button className="btn btn-primary btn-sm" onClick={() => openWorkPanel(a)}>Lam viec / chot thue</button>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input 
+                      placeholder="Gui tin nhan cho khach..." 
+                      value={msgInput[a.id] || ''} 
+                      onChange={(e) => setMsgInput({ ...msgInput, [a.id]: e.target.value })}
+                      style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }}
+                    />
+                    <button className="btn" style={{ border: '1px solid #e2e8f0' }} onClick={() => handleAction(a.id, { message: msgInput[a.id] })}>
+                      Gui
+                    </button>
+                  </div>
+
+                  {proposeDate[a.id] && (
+                    <div style={{ display: 'flex', gap: 8, padding: 12, background: '#ebf8ff', borderRadius: 12 }}>
+                      <input type="datetime-local" value={proposeDate[a.id]} onChange={(e) => setProposeDate({...proposeDate, [a.id]: e.target.value})} style={{ flex: 1 }} />
+                      <button className="btn btn-primary" onClick={() => handleAction(a.id, { ngay_gio: proposeDate[a.id], trang_thai: 'proposed', message: 'Moi gioi de xuat thoi gian xem nha moi.' })}>Luu</button>
+                      <button className="btn" onClick={() => setProposeDate({...proposeDate, [a.id]: null})}>Huy</button>
+                    </div>
                   )}
-                </td>
-              </tr>
-            ))}
-            {appointments.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', padding: 40 }}>Chua co lich hen nao</td></tr>}
-          </tbody>
-        </table>
+                  
+                  {a.ngay_gio && !proposeDate[a.id] && (
+                    <button className="btn" style={{ border: '1px dashed #cbd5e0', justifyContent: 'center' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date(a.ngay_gio).toISOString().slice(0, 16)})}>
+                      <Calendar size={16} /> Doi thoi gian khac
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        {appointments.length === 0 && (
+          <div style={{ gridColumn: '1/-1', padding: 80, textAlign: 'center', background: '#fff', borderRadius: 20 }}>
+            <Calendar size={48} color="#cbd5e0" style={{ marginBottom: 16 }} />
+            <p style={{ color: '#718096', fontSize: '16px' }}>Hien tai chua co yeu cau xem nha nao.</p>
+          </div>
+        )}
       </div>
 
       {selected && (
-        <div className="detail-grid" style={{ marginTop: 24 }}>
-          <div className="form-card" style={{ maxWidth: '100%' }}>
-            <h3 style={{ marginBottom: 12 }}>Ghi nhan lich su lam viec</h3>
-            <p style={{ marginBottom: 12 }}>{selected.User?.full_name || 'Khach hang'} - {selected.Property?.dia_chi_chi_tiet}</p>
-            <div className="form-group">
-              <label>Noi dung trao doi</label>
-              <textarea rows="4" value={interactionText} onChange={(e) => setInteractionText(e.target.value)} />
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
+          <div className="modal-content" style={{ maxWidth: '900px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2>Lam viec & Chot hop dong thue</h2>
+              <button className="btn" onClick={() => setSelected(null)}><X size={20} /></button>
             </div>
-            <button className="btn btn-primary" onClick={saveInteraction}>Luu lich su</button>
-          </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              <div className="stat-card" style={{ boxShadow: 'none', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: 16 }}>Nhat ky lam viec</h3>
+                <div className="form-group">
+                  <textarea rows="6" value={interactionText} onChange={(e) => setInteractionText(e.target.value)} placeholder="Ghi chu ket qua dan khach xem nha, cac thoa thuan them..." />
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveInteraction}>Luu nhat ky</button>
+              </div>
 
-          <div className="form-card" style={{ maxWidth: '100%' }}>
-            <h3 style={{ marginBottom: 12 }}>Chot hop dong thue</h3>
-            <div className="form-group">
-              <label>Gia tri hop dong</label>
-              <input type="number" value={contractForm.gia_tri_hop_dong} onChange={(e) => setContractForm({ ...contractForm, gia_tri_hop_dong: e.target.value })} />
+              <div className="stat-card" style={{ boxShadow: 'none', border: '1px solid #c6f6d5', background: '#f0fff4' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: 16 }}>Lap hop dong thue</h3>
+                <div className="form-group">
+                  <label>Tong gia tri hop dong (VNĐ)</label>
+                  <input type="number" value={contractForm.gia_tri_hop_dong} onChange={(e) => setContractForm({ ...contractForm, gia_tri_hop_dong: e.target.value })} placeholder="VD: 120000000" />
+                </div>
+                <div className="form-group">
+                  <label>Ti le hoa hong (%)</label>
+                  <input type="number" value={contractForm.phan_tram_hoa_hong} onChange={(e) => setContractForm({ ...contractForm, phan_tram_hoa_hong: e.target.value })} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group"><label>Tu ngay</label><input type="date" value={contractForm.ngay_bat_dau} onChange={(e) => setContractForm({ ...contractForm, ngay_bat_dau: e.target.value })} /></div>
+                  <div className="form-group"><label>Den ngay</label><input type="date" value={contractForm.ngay_ket_thuc} onChange={(e) => setContractForm({ ...contractForm, ngay_ket_thuc: e.target.value })} /></div>
+                </div>
+                <button className="btn btn-success" style={{ width: '100%', marginTop: 12, height: '48px' }} onClick={closeRentalContract}>
+                  Xac nhan chot thue nha
+                </button>
+              </div>
             </div>
-            <div className="form-group">
-              <label>Phan tram hoa hong</label>
-              <input type="number" value={contractForm.phan_tram_hoa_hong} onChange={(e) => setContractForm({ ...contractForm, phan_tram_hoa_hong: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>Ngay bat dau</label>
-              <input type="date" value={contractForm.ngay_bat_dau} onChange={(e) => setContractForm({ ...contractForm, ngay_bat_dau: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label>Ngay ket thuc</label>
-              <input type="date" value={contractForm.ngay_ket_thuc} onChange={(e) => setContractForm({ ...contractForm, ngay_ket_thuc: e.target.value })} />
-            </div>
-            <button className="btn btn-success" onClick={closeRentalContract}>Tao hop dong va tinh hoa hong</button>
-            <button className="btn" style={{ marginLeft: 8, border: '1px solid #cbd5e0' }} onClick={() => setSelected(null)}>Dong</button>
           </div>
         </div>
       )}

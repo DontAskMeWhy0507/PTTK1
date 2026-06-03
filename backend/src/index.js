@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { sequelize } = require('./config/database');
+const { sequelize, configureSqlite } = require('./config/database');
 require('./models');
 require('./jobs/depositExpiryJob');
 
@@ -23,9 +23,9 @@ app.use('/api/contracts', contractRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/employee', employeeRoutes);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
-sequelize.sync({ force: false }).then(() => {
+configureSqlite().then(() => sequelize.sync({ force: false })).then(() => {
   console.log('--- Database connected ---');
   app.listen(PORT, () => {
     console.log(`--- Server running on port ${PORT} ---`);

@@ -1,91 +1,248 @@
 import { useEffect, useState } from 'react';
-import { createDepositRequest, getMyContracts, payDeposit, updatePropertyReview } from '../api';
+import { getMyContracts, updatePropertyReview, getAvailableForBrokers, claimProperty } from '../api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Check, Hand, Home, Clock, Edit2, X } from 'lucide-react';
 
-const emptyForm = {
-  chu_nha_id: '',
-  loai_nha: '',
-  dien_tich: '',
-  huong_nha: '',
-  so_luong_phong: 1,
-  dia_chi_chi_tiet: '',
-  gia_de_xuat: '',
-  hien_trang: ''
-};
+import { useUI } from '../contexts/UIContext';
 
 const StaffProperties = () => {
   const [contracts, setContracts] = useState([]);
-  const [form, setForm] = useState(emptyForm);
+  const [availableHouses, setAvailableHouses] = useState([]);
+  const [evalModal, setEvalModal] = useState(null);
+  const [hienTrang, setHienTrang] = useState('');
+  const { user } = useAuth();
+  const { showNotification } = useUI();
+  const navigate = useNavigate();
 
-  const loadContracts = () => {
-    getMyContracts().then((res) => setContracts(res.data?.data || [])).catch(() => {});
-  };
-
-  useEffect(() => { loadContracts(); }, []);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    try {
-      await createDepositRequest(form);
-      setForm(emptyForm);
-      loadContracts();
-    } catch (error) {
-      alert(error.response?.data?.message || 'Khong the tiep nhan nha');
+  const loadData = () => {
+    if (user?.role === 'staff' || user?.role === 'admin' || user?.role === 'broker') {
+      getMyContracts().then((res) => setContracts(res.data?.data || [])).catch(() => {});
+    }
+    if (user?.role === 'broker' || user?.role === 'admin') {
+      getAvailableForBrokers().then((res) => setAvailableHouses(res.data?.data || [])).catch(() => {});
     }
   };
 
-  const review = async (contract, display) => {
+  useEffect(() => { loadData(); }, [user]);
+
+  const handleEvaluate = async () => {
     try {
-      await updatePropertyReview(contract.nha_cho_thue_id, {
-        hien_thi_chi_tiet: display,
-        trang_thai_hop_dong: display ? 'active' : contract.trang_thai,
-        ghi_chu: display ? 'Nhan vien da duyet hien thi nha' : contract.ghi_chu
+      await updatePropertyReview(evalModal.nha_cho_thue_id, {
+        hien_trang: hienTrang,
+        trang_thai_hop_dong: 'pending_deposit'
       });
-      loadContracts();
+      showNotification('Da ghi nhan danh gia va chuyen trang thai thanh cong', 'success');
+      setEvalModal(null);
+      loadData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the cap nhat nha');
+      showNotification(error.response?.data?.message || 'Co loi xay ra', 'error');
+    }
+  };
+
+  const handleClaim = async (id) => {
+    try {
+      await claimProperty(id);
+      showNotification('Ban da nhan quan ly nha nay', 'success');
+      loadData();
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Co loi xay ra', 'error');
     }
   };
 
   return (
     <div>
-      <div className="topbar"><h1>Quan ly nha ky gui</h1></div>
-      <div className="detail-grid">
-        <div className="form-card" style={{ maxWidth: '100%' }}>
-          <h3 style={{ marginBottom: 12 }}>Tiep nhan nha</h3>
-          <form onSubmit={submit}>
-            <div className="form-group"><label>Chu nha ID</label><input name="chu_nha_id" value={form.chu_nha_id} onChange={(e) => setForm({ ...form, chu_nha_id: e.target.value })} placeholder="Bo trong neu tao nhanh" /></div>
-            <div className="form-group"><label>Loai nha</label><input name="loai_nha" value={form.loai_nha} onChange={(e) => setForm({ ...form, loai_nha: e.target.value })} required /></div>
-            <div className="form-group"><label>Dien tich</label><input type="number" name="dien_tich" value={form.dien_tich} onChange={(e) => setForm({ ...form, dien_tich: e.target.value })} /></div>
-            <div className="form-group"><label>Huong nha</label><input name="huong_nha" value={form.huong_nha} onChange={(e) => setForm({ ...form, huong_nha: e.target.value })} /></div>
-            <div className="form-group"><label>So phong</label><input type="number" name="so_luong_phong" value={form.so_luong_phong} onChange={(e) => setForm({ ...form, so_luong_phong: e.target.value })} /></div>
-            <div className="form-group"><label>Dia chi</label><input name="dia_chi_chi_tiet" value={form.dia_chi_chi_tiet} onChange={(e) => setForm({ ...form, dia_chi_chi_tiet: e.target.value })} required /></div>
-            <div className="form-group"><label>Gia de xuat</label><input type="number" name="gia_de_xuat" value={form.gia_de_xuat} onChange={(e) => setForm({ ...form, gia_de_xuat: e.target.value })} /></div>
-            <div className="form-group"><label>Hien trang / phap ly</label><textarea rows="3" name="hien_trang" value={form.hien_trang} onChange={(e) => setForm({ ...form, hien_trang: e.target.value })} /></div>
-            <button className="btn btn-primary">Luu nha ky gui</button>
-          </form>
+      {evalModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: '20px' }}>Danh gia & Thoa thuan hop tac</h3>
+              <button className="btn" style={{ padding: 4 }} onClick={() => setEvalModal(null)}><X size={20} color="#718096" /></button>
+            </div>
+            <div className="form-group">
+              <label>Ghi nhan hien trang / Ket qua danh gia</label>
+              <textarea 
+                rows="4" 
+                value={hienTrang} 
+                onChange={(e) => setHienTrang(e.target.value)} 
+                placeholder="Da khao sat thuc te, chu nha dong y hop tac..." 
+              />
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', height: '48px', marginTop: 12 }} onClick={handleEvaluate}>
+              Xac nhan dong y hop tac & Yeu cau nop tien dam bao
+            </button>
+          </div>
         </div>
+      )}
 
-        <div className="table-container">
-          <table>
-            <thead><tr><th>Nha</th><th>Trang thai</th><th>Hien thi</th><th>Thao tac</th></tr></thead>
-            <tbody>
-              {contracts.map((contract) => (
-                <tr key={contract.id}>
-                  <td>{contract.Property?.dia_chi_chi_tiet || contract.nha_cho_thue_id}</td>
-                  <td>{contract.trang_thai}</td>
-                  <td>{contract.Property?.hien_thi_chi_tiet ? 'Dang hien thi' : 'An'}</td>
-                  <td>
-                    {contract.trang_thai === 'pending_deposit' && <button className="btn btn-success btn-sm" onClick={() => payDeposit(contract.id).then(loadContracts)}>Nop dam bao</button>}
-                    <button className="btn btn-sm" style={{ marginLeft: 6 }} onClick={() => review(contract, true)}>Duyet hien thi</button>
-                    <button className="btn btn-danger btn-sm" style={{ marginLeft: 6 }} onClick={() => review(contract, false)}>An nha</button>
-                  </td>
-                </tr>
-              ))}
-              {contracts.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: 32 }}>Chua co nha ky gui</td></tr>}
-            </tbody>
-          </table>
-        </div>
+      <div className="topbar">
+        <h1>{user?.role === 'broker' ? 'Kho nha cho thue' : 'Quan ly ky gui'}</h1>
       </div>
+
+      {(user?.role === 'staff' || user?.role === 'admin') && (
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 4, height: 24, background: 'var(--primary)', borderRadius: 2 }}></div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Yeu cau cho xu ly</h2>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bat dong san</th>
+                  <th>Gia cho thue</th>
+                  <th>Trang thai</th>
+                  <th>Thao tac</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracts.filter(c => ['draft', 'pending_deposit', 'paid'].includes(c.trang_thai)).map((contract) => (
+                  <tr key={contract.id}>
+                    <td className="wrap">
+                      <div style={{ fontWeight: 700 }}>{contract.Property?.loai_nha}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.dia_chi_chi_tiet}</div>
+                    </td>
+                    <td>{Number(contract.Property?.gia_de_xuat).toLocaleString('vi-VN')} VNĐ</td>
+                    <td>
+                      {contract.trang_thai === 'draft' && <span className="badge badge-pending">Cho khao sat</span>}
+                      {contract.trang_thai === 'pending_deposit' && <span className="badge badge-pending" style={{ background: '#e2e8f0', color: '#4a5568' }}>Cho khach nop tien</span>}
+                      {contract.trang_thai === 'paid' && <span className="badge badge-active">Da nop 1M</span>}
+                    </td>
+                    <td>
+                      {contract.trang_thai === 'draft' ? (
+                        <button className="btn btn-primary btn-sm" onClick={() => { setEvalModal(contract); setHienTrang(contract.Property?.hien_trang || ''); }}>
+                          <Edit2 size={16} /> Cap nhat hien trang
+                        </button>
+                      ) : contract.trang_thai === 'paid' ? (
+                        <button className="btn btn-success btn-sm" onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
+                          <Check size={16} /> Tai HD & Kich hoat
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Clock size={14} /> Dang cho...
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {contracts.filter(c => ['draft', 'pending_deposit', 'paid'].includes(c.trang_thai)).length === 0 && (
+                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>Hien tai khong co yeu cau nao can xu ly.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(user?.role === 'staff' || user?.role === 'admin') && (
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 4, height: 24, background: '#38a169', borderRadius: 2 }}></div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Danh sach Hop dong ky gui</h2>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bat dong san</th>
+                  <th>Chu nha</th>
+                  <th>Ngay ky / Het han</th>
+                  <th>Trang thai</th>
+                  <th>Thao tac</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracts.filter(c => ['active', 'terminated', 'cancelled'].includes(c.trang_thai)).map((contract) => (
+                  <tr key={contract.id}>
+                    <td className="wrap">
+                      <div style={{ fontWeight: 700 }}>{contract.Property?.loai_nha}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.dia_chi_chi_tiet}</div>
+                    </td>
+                    <td>{contract.Property?.chu_nha_id?.slice(0, 8)}...</td>
+                    <td>
+                      <div>Ky: {contract.ngay_ky || '---'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Han: {contract.ngay_het_han || '---'}</div>
+                    </td>
+                    <td>
+                      <span className={`badge ${contract.trang_thai === 'active' ? 'badge-active' : 'badge-rejected'}`}>
+                        {contract.trang_thai}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm" style={{ border: '1px solid #e2e8f0' }} onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
+                        Xem chi tiet
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {contracts.filter(c => ['active', 'terminated', 'cancelled'].includes(c.trang_thai)).length === 0 && (
+                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>Chua co hop dong nao duoc kich hoat.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(user?.role === 'broker' || user?.role === 'admin') && (
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <div style={{ width: 4, height: 24, background: '#3182ce', borderRadius: 2 }}></div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Bất động sản bạn đang quản lý</h2>
+          </div>
+          <div className="property-grid">
+            {contracts.filter(c => c.Property?.broker_id === user?.id).map((c) => (
+              <div key={c.id} className="property-card" style={{ border: '1px solid #bee3f8' }}>
+                <div className="img" style={{ background: 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}><Home size={48} color="#3182ce" /></div>
+                <div className="body">
+                  <span className="badge badge-active" style={{ width: 'fit-content', marginBottom: 12 }}>Đang phụ trách</span>
+                  <h3>{c.Property?.loai_nha}</h3>
+                  <p className="address">{c.Property?.dia_chi_chi_tiet}</p>
+                  <div className="price">{Number(c.Property?.gia_de_xuat).toLocaleString('vi-VN')} VNĐ</div>
+                  <button className="btn btn-primary" style={{ marginTop: 'auto', width: '100%' }} onClick={() => navigate(`/properties/${c.Property?.id}`)}>
+                    Xem chi tiết & Khách hàng
+                  </button>
+                </div>
+              </div>
+            ))}
+            {contracts.filter(c => c.Property?.broker_id === user?.id).length === 0 && (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, background: '#fff', borderRadius: 20, border: '1px dashed #cbd5e0' }}>
+                <p style={{ color: 'var(--text-muted)' }}>Bạn chưa tiếp nhận quản lý căn nhà nào.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {(user?.role === 'broker' || user?.role === 'admin') && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <div style={{ width: 4, height: 24, background: 'var(--primary)', borderRadius: 2 }}></div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Nha moi chua co nguoi quan ly</h2>
+          </div>
+          <div className="property-grid">
+            {availableHouses.map((house) => (
+              <div key={house.id} className="property-card">
+                <div className="img"><Home size={48} /></div>
+                <div className="body">
+                  <span className="badge badge-active" style={{ width: 'fit-content', marginBottom: 12 }}>San sang</span>
+                  <h3>{house.loai_nha}</h3>
+                  <p className="address">{house.dia_chi_chi_tiet}</p>
+                  <div className="price">{Number(house.gia_de_xuat).toLocaleString('vi-VN')} VNĐ/tháng</div>
+                  <button className="btn btn-primary" style={{ marginTop: 'auto', width: '100%' }} onClick={() => handleClaim(house.id)}>
+                    <Hand size={18} /> Nhan cham soc khach hang
+                  </button>
+                </div>
+              </div>
+            ))}
+            {availableHouses.length === 0 && (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 60, background: '#fff', borderRadius: 20, border: '1px dashed #cbd5e0' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Tat ca cac nha da co moi gioi quan ly.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

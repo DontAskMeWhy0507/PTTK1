@@ -1,15 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { cancelDepositContract } from '../api';
+import api, { cancelDepositContract, customerPayDeposit } from '../api';
+
+import { useUI } from '../contexts/UIContext';
+import { LayoutDashboard, PlusCircle, Home, CheckCircle, Clock, AlertTriangle, X } from 'lucide-react';
 
 const LandlordDashboard = () => {
   const [contracts, setContracts] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, expiringSoon: 0, refundPending: 0 });
+  const [paymentModal, setPaymentModal] = useState(null);
+  const [countdown, setCountdown] = useState(10);
+  const { showNotification, showConfirm } = useUI();
   const navigate = useNavigate();
 
   const fetchContracts = async () => {
     try {
-      const res = await api.get('/contracts/deposit');
+      const res = await api.get(`/contracts/deposit?_t=${new Date().getTime()}`);
       const data = res.data?.data || [];
       setContracts(data);
       const today = new Date();
@@ -31,76 +37,159 @@ const LandlordDashboard = () => {
 
   useEffect(() => { fetchContracts(); }, []);
 
-  const handleCancel = async (contractId) => {
+  useEffect(() => {
+    let timer;
+    if (paymentModal) {
+      setCountdown(10);
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            executePayment(paymentModal);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [paymentModal]);
+
+  const handleCancel = (contractId) => {
+    showConfirm(
+      'Huy hop dong / Hoan tien',
+      'Ban co chac chan muon gui yeu cau huy hop dong ky gui nay? Neu thoa man dieu kien (sau 6 thang chua cho thue duoc), ban se duoc hoan lai 1.000.000 VNĐ.',
+      async () => {
+        try {
+          await cancelDepositContract(contractId, { ghi_chu: 'Chu nha yeu cau cham dut hop dong' });
+          showNotification('Da gui yeu cau huy hop dong thanh cong', 'success');
+          fetchContracts();
+        } catch (error) {
+          showNotification(error.response?.data?.message || 'Khong the gui yeu cau', 'error');
+        }
+      }
+    );
+  };
+
+  const executePayment = async (id) => {
     try {
-      await cancelDepositContract(contractId, { ghi_chu: 'Chu nha yeu cau cham dut hop dong' });
-      await fetchContracts();
+      await customerPayDeposit(id);
+      showNotification('Thanh toan tien dam bao thanh cong!', 'success');
+      setPaymentModal(null);
+      fetchContracts();
     } catch (error) {
-      alert(error.response?.data?.message || 'Khong the huy hop dong');
+      showNotification(error.response?.data?.message || 'Co loi xay ra khi xac nhan', 'error');
+      setPaymentModal(null);
     }
   };
 
   const statusMap = {
-    draft: 'Nhap',
-    pending_deposit: 'Cho nop tien',
-    active: 'Dang hieu luc',
-    terminated: 'Tat toan',
-    cancelled: 'Da huy'
-  };
-
-  const badgeMap = {
-    draft: 'badge-pending',
-    pending_deposit: 'badge-pending',
-    active: 'badge-active',
-    terminated: 'badge-expired',
-    cancelled: 'badge-expired'
+    draft: { label: 'Cho danh gia', class: 'badge-pending' },
+    pending_deposit: { label: 'Cho nop tien', class: 'badge-pending' },
+    paid: { label: 'Da nop - Cho ky', class: 'badge-active' },
+    active: { label: 'Dang hieu luc', class: 'badge-active' },
+    terminated: { label: 'Tat toan', class: 'badge-rejected' },
+    cancelled: { label: 'Da huy', class: 'badge-rejected' }
   };
 
   return (
     <div>
+      {paymentModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn" style={{ padding: 4 }} onClick={() => setPaymentModal(null)}>
+                <X size={20} color="#718096" />
+              </button>
+            </div>
+            <h3 style={{ marginBottom: 8 }}>Thanh toan 1.000.000 VNĐ</h3>
+            <p style={{ color: '#718096', marginBottom: 24, fontSize: '14px' }}>Quet ma QR duoi day bang ung dung Ngan hang</p>
+            
+            <div style={{ background: '#f7fafc', padding: 24, borderRadius: 16, display: 'inline-block', marginBottom: 24 }}>
+              <img 
+                src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=PTTK_RENTAL_1_MILLION_VND" 
+                alt="QR Code" 
+                style={{ width: 200, height: 200, display: 'block', borderRadius: 8 }}
+                onError={(e) => { e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="%23e2e8f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="20" fill="%23718096">Ma QR o day</text></svg>'; }}
+              />
+            </div>
+
+            <div style={{ padding: 16, background: '#ebf8ff', borderRadius: 12, color: '#2c5282', fontWeight: 600 }}>
+              He thong dang cho xac nhan sau {countdown} giay...
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="topbar">
-        <h1>Dashboard chu nha</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/deposit-request')}>+ Ky gui nha moi</button>
+        <h1>Dashboard Chu nha</h1>
+        <button className="btn btn-primary" onClick={() => navigate('/deposit-request')}>
+          <PlusCircle size={18} /> Ky gui nha moi
+        </button>
       </div>
 
-      <div className="stats">
-        <div className="stat-card"><div className="label">Tong nha ky gui</div><div className="value">{stats.total}</div></div>
-        <div className="stat-card"><div className="label">Dang hieu luc</div><div className="value" style={{ color: '#38a169' }}>{stats.active}</div></div>
-        <div className="stat-card"><div className="label">Sap het han 6 thang</div><div className="value" style={{ color: stats.expiringSoon > 0 ? '#e53e3e' : '#718096' }}>{stats.expiringSoon}</div></div>
-        <div className="stat-card"><div className="label">Cho hoan tien</div><div className="value">{stats.refundPending}</div></div>
+      <div className="stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Tong nha ky gui</span><Home size={20} color="#3182ce" /></div>
+          <div className="value">{stats.total}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Dang hieu luc</span><CheckCircle size={20} color="#38a169" /></div>
+          <div className="value" style={{ color: '#38a169' }}>{stats.active}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Sap het han 6t</span><Clock size={20} color="#dd6b20" /></div>
+          <div className="value" style={{ color: stats.expiringSoon > 0 ? '#dd6b20' : '#718096' }}>{stats.expiringSoon}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Yeu cau hoan tien</span><AlertTriangle size={20} color="#e53e3e" /></div>
+          <div className="value">{stats.refundPending}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div style={{ width: 4, height: 24, background: '#3182ce', borderRadius: 2 }}></div>
+        <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Danh sach nha ky gui</h2>
       </div>
 
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th>Dia chi</th>
-              <th>Loai nha</th>
+              <th style={{ width: '30%' }}>Bat dong san</th>
               <th>Ngay ky</th>
               <th>Han 6 thang</th>
               <th>Trang thai</th>
-              <th>Thao tac</th>
+              <th>Hanh dong</th>
             </tr>
           </thead>
           <tbody>
-            {contracts.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40 }}>Chua co nha ky gui nao.</td></tr>}
+            {contracts.length === 0 && (
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: 60, color: '#718096' }}>Ban chua co bat dong san nao ky gui.</td></tr>
+            )}
             {contracts.map((c) => (
               <tr key={c.id}>
-                <td>{c.Property?.dia_chi_chi_tiet || c.nha_cho_thue_id}</td>
-                <td>{c.Property?.loai_nha || '---'}</td>
+                <td className="wrap">
+                  <div style={{ fontWeight: 700 }}>{c.Property?.loai_nha}</div>
+                  <div style={{ fontSize: '13px', color: '#718096' }}>{c.Property?.dia_chi_chi_tiet || 'Dang cap nhat...'}</div>
+                </td>
                 <td>{c.ngay_ky || '---'}</td>
                 <td>{c.ngay_het_han || '---'}</td>
-                <td><span className={`badge ${badgeMap[c.trang_thai]}`}>{statusMap[c.trang_thai] || c.trang_thai}</span></td>
                 <td>
-                  <button className="btn btn-sm" style={{ marginRight: 6, border: '1px solid #cbd5e0', background: '#fff' }} onClick={() => navigate(`/contracts/deposit/${c.id}`)}>Chi tiet</button>
-                  {c.trang_thai === 'pending_deposit' && (
-                    <button className="btn btn-success btn-sm" style={{ marginRight: 6 }} onClick={() => api.post(`/properties/pay-deposit/${c.id}`).then(fetchContracts)}>
-                      Nop 1.000.000d
-                    </button>
-                  )}
-                  {['active', 'terminated'].includes(c.trang_thai) && (
-                    <button className="btn btn-danger btn-sm" onClick={() => handleCancel(c.id)}>Huy / hoan tien</button>
-                  )}
+                  <span className={`badge ${statusMap[c.trang_thai]?.class || 'badge-pending'}`}>
+                    {statusMap[c.trang_thai]?.label || c.trang_thai}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-sm" style={{ border: '1px solid #e2e8f0' }} onClick={() => navigate(`/contracts/deposit/${c.id}`)}>Chi tiet</button>
+                    {c.trang_thai === 'pending_deposit' && (
+                      <button className="btn btn-success btn-sm" onClick={() => setPaymentModal(c.id)}>Thanh toan 1T</button>
+                    )}
+                    {['active'].includes(c.trang_thai) && (
+                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(c.id)}>Huy / Hoan tien</button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -1,0 +1,6 @@
+
+> pttk-backend@1.0.0 start
+> node src/index.js
+
+--- Database connected ---
+--- Server running on port 3001 ---

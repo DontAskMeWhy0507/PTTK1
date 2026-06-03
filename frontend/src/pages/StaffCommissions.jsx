@@ -29,8 +29,8 @@ const StaffCommissions = () => {
               <tr key={c.id}>
                 <td>{c.hop_dong_thue_id || '---'}</td>
                 <td>{(c.so_tien || 0).toLocaleString('vi-VN')}đ</td>
-                <td><span className="badge badge-active">{c.loai === 'commission' ? 'Hoa hồng' : 'Khấu trừ'}</span></td>
-                <td><span className="badge badge-pending">{c.trang_thai}</span></td>
+                <td><span className={`badge ${c.loai === 'commission' ? 'badge-active' : 'badge-expired'}`}>{c.loai === 'commission' ? 'Hoa hồng' : 'Khấu trừ'}</span></td>
+                <td><span className="badge badge-active">{c.trang_thai === 'earned' ? 'Đã ghi nhận' : c.trang_thai}</span></td>
                 <td>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '---'}</td>
               </tr>
             ))}

@@ -15,7 +15,7 @@ const RentalContract = sequelize.define('RentalContract', {
   phan_tram_hoa_hong: { type: DataTypes.DECIMAL(5, 2), defaultValue: 3.00 },
   tien_hoa_hong: { type: DataTypes.DECIMAL(15, 2) },
   trang_thai: {
-    type: DataTypes.ENUM('draft', 'pending_sign', 'active', 'completed', 'cancelled'),
+    type: DataTypes.ENUM('draft', 'pending_sign', 'pending_payment', 'paid', 'active', 'completed', 'cancelled'),
     defaultValue: 'draft'
   },
   ngay_bat_dau: { type: DataTypes.DATEONLY },

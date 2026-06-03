@@ -21,14 +21,20 @@ const Appointment = sequelize.define('Appointment', {
   },
   ngay_gio: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true
   },
   ghi_chu: {
     type: DataTypes.TEXT
   },
   trang_thai: {
-    type: DataTypes.ENUM('pending', 'confirmed', 'completed', 'cancelled', 'no_show'),
+    type: DataTypes.ENUM('pending', 'proposed', 'confirmed', 'rejected', 'completed', 'cancelled', 'no_show'),
     defaultValue: 'pending'
+  },
+  last_message: {
+    type: DataTypes.TEXT
+  },
+  last_message_by: {
+    type: DataTypes.ENUM('customer', 'staff', 'broker')
   }
 }, {
   tableName: 'lich_hen',

@@ -2,24 +2,40 @@ import { useState, useEffect, useCallback } from 'react';
 import api, { getProperties } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, X, Home } from 'lucide-react';
+
+import { useUI } from '../contexts/UIContext';
 
 const PropertyList = () => {
   const [properties, setProperties] = useState([]);
   const [search, setSearch] = useState('');
+  const [myAppointments, setMyAppointments] = useState([]);
   const { user } = useAuth();
+  const { showNotification } = useUI();
   const navigate = useNavigate();
 
   const fetchProperties = useCallback(async () => {
     try {
       const res = await getProperties({ q: search || undefined });
-      setProperties(res.data || []);
+      setProperties(res.data?.data || []);
     } catch (err) {
       console.error('Loi tai danh sach nha:', err);
     }
   }, [search]);
 
-  useEffect(() => { fetchProperties(); }, [fetchProperties]);
+  const fetchAppointments = useCallback(async () => {
+    if (user?.role === 'customer') {
+      try {
+        const res = await api.get('/appointments/my');
+        setMyAppointments(res.data?.data || []);
+      } catch (e) {}
+    }
+  }, [user]);
+
+  useEffect(() => { 
+    fetchProperties(); 
+    fetchAppointments();
+  }, [fetchProperties, fetchAppointments]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -31,110 +47,135 @@ const PropertyList = () => {
 
   const handleBook = async () => {
     try {
-      await api.post('/appointments', { nha_cho_thue_id: booking.id, ngay_gio: date });
-      alert('Da dat lich hen! Nhan vien se lien he ban.');
+      await api.post('/appointments', { nha_cho_thue_id: booking.id, ngay_gio: date, ghi_chu: 'Khach hang muon xem nha nay' });
+      showNotification('Da gui yeu cau xem nha thanh cong!', 'success');
       setBooking(null);
     } catch (err) {
-      alert('Loi dat lich');
+      showNotification('Loi gui yeu cau xem nha', 'error');
     }
   };
 
   return (
     <div>
       {booking && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="form-card" style={{ width: '400px' }}>
-            <h3>Dat lich xem nha</h3>
-            <p style={{ margin: '10px 0', fontSize: '14px' }}>{booking.loai_nha} - {booking.dien_tich}m2</p>
-            <div className="form-group">
-              <label>Chon ngay gio</label>
-              <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setBooking(null)}>
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: '20px' }}>Hen xem nha</h3>
+              <button className="btn" onClick={() => setBooking(null)}><X size={20} /></button>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleBook}>Xac nhan</button>
-              <button className="btn" style={{ flex: 1, border: '1px solid #cbd5e0' }} onClick={() => setBooking(null)}>Huy</button>
+            <div style={{ padding: '16px', background: '#f7fafc', borderRadius: '12px', marginBottom: 20 }}>
+              <p style={{ fontWeight: 700, color: '#2d3748' }}>{booking.loai_nha}</p>
+              <p style={{ fontSize: '13px', color: '#718096', marginTop: 4 }}>{booking.dien_tich} m²</p>
+            </div>
+            <div className="form-group">
+              <label>Thoi gian ban muon xem (du kien)</label>
+              <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} required style={{ height: '48px' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: 24 }}>
+              <button className="btn btn-primary" style={{ flex: 1, height: '44px' }} onClick={handleBook}>Xac nhan gui</button>
+              <button className="btn" style={{ flex: 1, height: '44px', border: '1px solid #e2e8f0' }} onClick={() => setBooking(null)}>Huy</button>
             </div>
           </div>
         </div>
       )}
 
       <div className="topbar">
-        <h1>Kham pha nha cho thue</h1>
+        <h1>Kham pha bat dong san</h1>
         {!user && (
-          <div>
-            <button className="btn btn-primary" onClick={() => navigate('/login')} style={{ marginRight: 8 }}>Dang nhap</button>
-            <button className="btn btn-success" onClick={() => navigate('/register')}>Dang ky</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-primary" onClick={() => navigate('/login')}>Dang nhap</button>
+            <button className="btn" style={{ border: '1px solid #e2e8f0' }} onClick={() => navigate('/register')}>Dang ky</button>
           </div>
         )}
       </div>
 
-      <form onSubmit={handleSearch} style={{ position: 'relative', marginBottom: '32px' }}>
+      <form onSubmit={handleSearch} style={{ position: 'relative', marginBottom: '40px', maxWidth: '800px' }}>
         <input
           type="text"
-          placeholder="Tim theo khu vuc, loai nha..."
-          style={{ width: '100%', padding: '16px 48px', borderRadius: '30px', border: '1px solid #cbd5e0', fontSize: '16px' }}
+          placeholder="Tim theo dia chi, loai nha (chung cu, nha rieng...)"
+          style={{ width: '100%', padding: '18px 24px 18px 56px', borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '16px', boxShadow: 'var(--shadow)' }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button type="submit" style={{ position: 'absolute', left: '16px', top: '14px', background: 'none', border: 'none', cursor: 'pointer' }}>
-          <Search size={20} color="#718096" />
-        </button>
+        <Search size={22} color="#a0aec0" style={{ position: 'absolute', left: '20px', top: '18px' }} />
+        <button type="submit" className="btn btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', height: '42px' }}>Tim kiem</button>
       </form>
 
       {properties.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#a0aec0' }}>
-          <Search size={48} style={{ marginBottom: 16 }} />
-          <h3>Khong tim thay nha nao</h3>
-          <p style={{ marginTop: 8 }}>Hay thu tim kiem voi tu khoa khac hoac dang nhap de xem them.</p>
+        <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '20px', border: '1px dashed #cbd5e0' }}>
+          <Search size={64} color="#cbd5e0" style={{ marginBottom: 20 }} />
+          <h3 style={{ fontSize: '20px', color: '#4a5568' }}>Khong tim thay nha phu hop</h3>
+          <p style={{ marginTop: 12, color: '#718096' }}>Hay thu thay doi tu khoa tim kiem hoac dang nhap de xem cac nha moi nhat.</p>
         </div>
       )}
 
       <div className="property-grid">
-        {properties.map((p) => (
-          <div key={p.id} className="property-card">
-            <div className="img">Nha {p.loai_nha}</div>
+        {properties.map((p) => {
+          const isOwner = user?.id === p.chu_nha_id;
+          const appt = myAppointments.find(a => a.nha_cho_thue_id === p.id && ['pending', 'proposed', 'confirmed'].includes(a.trang_thai));
+          const hasAppt = !!appt;
+          
+          return (
+          <div key={p.id} className="property-card" style={isOwner ? { border: '2px solid #ecc94b', background: '#fffff0' } : {}}>
+            <div className="img" style={{ background: isOwner ? 'linear-gradient(135deg, #fefcbf, #fbd38d)' : 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}>
+              <Home size={48} color={isOwner ? "#d69e2e" : "#3182ce"} />
+            </div>
             <div className="body">
-              <div className="badge badge-active" style={{ marginBottom: 8 }}>{p.loai_nha}</div>
-              <h3>{p.loai_nha} - {p.dien_tich}m2</h3>
-              <p className="address">
-                <MapPin size={14} style={{ verticalAlign: 'middle' }} /> {p.dia_chi_chi_tiet}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <span className="badge badge-active">{p.loai_nha}</span>
+                {isOwner && <span className="badge" style={{ background: '#ecc94b', color: '#744210' }}>Nha cua ban</span>}
+                {hasAppt && (
+                  <span className="badge" style={{ background: '#4299e1', color: '#fff' }}>
+                    Da phan cho: {appt.Broker?.full_name || 'Dang tim...'}
+                  </span>
+                )}
+              </div>
+              <h3 style={{ fontSize: '18px', color: '#1a202c', marginBottom: 8 }}>{p.loai_nha} - {p.dien_tich}m²</h3>
+              <p className="address" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '14px', color: '#718096', marginBottom: 16 }}>
+                <MapPin size={16} /> {p.dia_chi_chi_tiet}
               </p>
-              {!p.thong_tin_day_du && (
-                <p style={{ fontSize: '12px', color: '#e53e3e', marginBottom: 4 }}>
-                  Dang ky thanh vien de xem dia chi day du
-                </p>
-              )}
-              <div className="price">{Number(p.gia_de_xuat).toLocaleString('vi-VN')}d / thang</div>
-              <button
-                className="btn btn-sm"
-                style={{ width: '100%', marginTop: '12px', border: '1px solid #cbd5e0', background: '#fff' }}
-                onClick={() => navigate(`/properties/${p.id}`)}
-              >
-                Xem chi tiet
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ width: '100%', marginTop: '10px' }}
-                onClick={() => {
-                  if (!user) {
-                    navigate('/login');
-                    return;
-                  }
-                  setBooking(p);
-                }}
-              >
-                {user ? 'Dat lich xem nha' : 'Dang nhap de dat lich'}
-              </button>
+              
+              <div style={{ marginTop: 'auto' }}>
+                <div className="price" style={{ color: isOwner ? '#d69e2e' : 'var(--primary)' }}>{Number(p.gia_de_xuat).toLocaleString('vi-VN')} VNĐ/tháng</div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                  {(!isOwner && !hasAppt && (!user || user.role === 'customer')) && (
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 1, fontSize: '13px', padding: '10px' }}
+                      onClick={() => {
+                        if (!user) {
+                          navigate('/login');
+                          return;
+                        }
+                        setBooking(p);
+                      }}
+                    >
+                      Hen xem nha
+                    </button>
+                  )}
+                  <button
+                    className="btn"
+                    style={{ flex: (!isOwner && !hasAppt && (!user || user.role === 'customer')) ? 'unset' : 1, border: '1px solid #e2e8f0', fontSize: '13px', padding: '10px' }}
+                    onClick={() => navigate(`/properties/${p.id}`)}
+                  >
+                    Chi tiet
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
-      {properties.length > 0 && !user?.is_member && (
-        <div style={{ marginTop: '40px', background: '#ebf8ff', padding: '32px', borderRadius: '16px', border: '1px solid #bee3f8', textAlign: 'center' }}>
-          <h2 style={{ color: '#2c5282' }}>Tro thanh thanh vien ngay!</h2>
-          <p style={{ color: '#2c5282', margin: '8px 0 20px' }}>Chi thanh vien moi co the xem dia chi chi tiet va thong tin day du hon.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/register')}>Dang ky thanh vien</button>
+      {properties.length > 0 && !user && (
+        <div style={{ marginTop: '60px', background: 'linear-gradient(135deg, #3182ce, #2c5282)', padding: '48px', borderRadius: '24px', textAlign: 'center', color: '#fff', boxShadow: 'var(--shadow-lg)' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 800 }}>Xem thong tin day du & Dat lich?</h2>
+          <p style={{ margin: '16px 0 32px', fontSize: '16px', opacity: 0.9 }}>Dang nhap hoac dang ky ngay de xem dia chi chinh xac va ket noi truc tiep voi moi gioi.</p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+            <button className="btn" style={{ background: '#fff', color: '#2c5282', padding: '14px 32px' }} onClick={() => navigate('/login')}>Dang nhap ngay</button>
+            <button className="btn" style={{ border: '1px solid rgba(255,255,255,0.4)', color: '#fff', padding: '14px 32px' }} onClick={() => navigate('/register')}>Tao tai khoan moi</button>
+          </div>
         </div>
       )}
     </div>
