@@ -6,3 +6,16 @@
   [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m358[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
+[2m10:17:13 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.jsx, /src/pages/Register.jsx, /src/pages/StaffClosedContracts.jsx, /src/pages/ContractDetail.jsx, /src/pages/PropertyDetail.jsx, /src/pages/MyAppointments.jsx, /src/pages/StaffCommissions.jsx, /src/pages/StaffAppointments.jsx, /src/pages/MyRentalContracts.jsx, /src/pages/StaffWorkHistory.jsx, /src/pages/DepositRequest.jsx, /src/pages/AdminUsers.jsx, /src/pages/PropertyList.jsx, /src/pages/LandlordDashboard.jsx, /src/pages/StaffProperties.jsx[22m
+[2m10:25:52 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/StaffProperties.jsx[22m
+[2m10:26:14 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/StaffProperties.jsx[22m
+[2m10:28:01 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ContractDetail.jsx[22m
+[2m10:30:50 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ContractDetail.jsx[22m
+[2m10:30:59 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m10:34:57 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/LandlordDashboard.jsx[22m
+[2m10:38:51 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m10:54:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.jsx, /src/pages/Register.jsx, /src/pages/StaffClosedContracts.jsx, /src/pages/ContractDetail.jsx, /src/pages/PropertyDetail.jsx, /src/pages/MyAppointments.jsx, /src/pages/StaffCommissions.jsx, /src/pages/StaffAppointments.jsx, /src/pages/MyRentalContracts.jsx, /src/pages/StaffWorkHistory.jsx, /src/pages/DepositRequest.jsx, /src/pages/AdminUsers.jsx, /src/pages/PropertyList.jsx, /src/pages/LandlordDashboard.jsx, /src/pages/StaffProperties.jsx, /src/pages/StaffTransactions.jsx[22m
+[2m10:55:01 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/PropertyList.jsx[22m
+[2m10:55:26 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/StaffProperties.jsx[22m
+[2m10:55:48 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ContractDetail.jsx[22m
+[2m10:55:57 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/LandlordDashboard.jsx[22m

@@ -35,7 +35,7 @@ const serializeProperty = (property, showFullDetails) => {
 
 exports.getAllProperties = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, loai_nha, minPrice, maxPrice, minArea, maxArea } = req.query;
     const viewer = getViewer(req);
     const where = { hien_thi_chi_tiet: true };
 
@@ -44,6 +44,17 @@ exports.getAllProperties = async (req, res) => {
         { loai_nha: { [Op.like]: `%${q}%` } },
         { dia_chi_chi_tiet: { [Op.like]: `%${q}%` } }
       ];
+    }
+    if (loai_nha) where.loai_nha = { [Op.like]: `%${loai_nha}%` };
+    if (minPrice || maxPrice) {
+      where.gia_de_xuat = {};
+      if (minPrice) where.gia_de_xuat[Op.gte] = Number(minPrice);
+      if (maxPrice) where.gia_de_xuat[Op.lte] = Number(maxPrice);
+    }
+    if (minArea || maxArea) {
+      where.dien_tich = {};
+      if (minArea) where.dien_tich[Op.gte] = Number(minArea);
+      if (maxArea) where.dien_tich[Op.lte] = Number(maxArea);
     }
 
     const properties = await Property.findAll({ where });

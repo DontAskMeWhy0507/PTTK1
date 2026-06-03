@@ -1,18 +1,24 @@
 const jwt = require('jsonwebtoken');
+const { User } = require('../models');
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-      const token = authHeader.split(' ')[1];
-      if (token) {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findByPk(decoded.id);
+      if (user && user.status === 'active') {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          full_name: user.full_name,
+          is_member: !!user.is_member
+        };
       }
     }
     next();
   } catch (error) {
-    // If token is invalid, we just don't set req.user, but don't block
     next();
   }
 };

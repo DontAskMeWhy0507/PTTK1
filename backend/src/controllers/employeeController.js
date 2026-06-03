@@ -313,12 +313,16 @@ exports.updatePropertyReview = async (req, res) => {
     });
 
     const depositContract = await DepositContract.findOne({ where: { nha_cho_thue_id: property.id } });
-    if (depositContract && req.body.trang_thai_hop_dong) {
-      await depositContract.update({
-        trang_thai: req.body.trang_thai_hop_dong,
+    if (depositContract) {
+      const contractPatch = {
         nhan_vien_id: depositContract.nhan_vien_id || req.user.id,
         ghi_chu: req.body.ghi_chu ?? depositContract.ghi_chu
-      });
+      };
+      if (req.body.trang_thai_hop_dong) contractPatch.trang_thai = req.body.trang_thai_hop_dong;
+      if (req.body.lich_khao_sat !== undefined) contractPatch.lich_khao_sat = req.body.lich_khao_sat || null;
+      if (req.body.trang_thai_phap_ly) contractPatch.trang_thai_phap_ly = req.body.trang_thai_phap_ly;
+      if (req.body.ghi_chu_phap_ly !== undefined) contractPatch.ghi_chu_phap_ly = req.body.ghi_chu_phap_ly;
+      await depositContract.update(contractPatch);
     }
 
     res.json({ success: true, message: 'Da cap nhat danh gia nha', data: { property, depositContract } });

@@ -10,7 +10,13 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => { if (err.response?.status === 401) localStorage.removeItem('token'); return Promise.reject(err); }
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+    return Promise.reject(err);
+  }
 );
 
 export const login = (email, password) => api.post('/auth/login', { email, password });
@@ -31,6 +37,7 @@ export const claimProperty = (id) => api.post(`/properties/${id}/claim`);
 
 export const getMyContracts = () => api.get(`/contracts/deposit?_t=${Date.now()}`);
 export const cancelDepositContract = (id, data = {}) => api.post(`/contracts/deposit/${id}/cancel`, data);
+export const processRefund = (refundId, data) => api.post(`/contracts/refunds/${refundId}/process`, data);
 export const getMyRentalContracts = () => api.get('/contracts/rental/my');
 export const getRentalContractDetail = (id) => api.get(`/contracts/rental/${id}`);
 export const payRent = (id) => api.post(`/contracts/rental/${id}/pay`);

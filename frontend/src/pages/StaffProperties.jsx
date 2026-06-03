@@ -11,6 +11,9 @@ const StaffProperties = () => {
   const [availableHouses, setAvailableHouses] = useState([]);
   const [evalModal, setEvalModal] = useState(null);
   const [hienTrang, setHienTrang] = useState('');
+  const [surveyDate, setSurveyDate] = useState('');
+  const [legalStatus, setLegalStatus] = useState('pending');
+  const [legalNote, setLegalNote] = useState('');
   const { user } = useAuth();
   const { showNotification } = useUI();
   const navigate = useNavigate();
@@ -30,7 +33,10 @@ const StaffProperties = () => {
     try {
       await updatePropertyReview(evalModal.nha_cho_thue_id, {
         hien_trang: hienTrang,
-        trang_thai_hop_dong: 'pending_deposit'
+        trang_thai_hop_dong: 'pending_deposit',
+        lich_khao_sat: surveyDate || null,
+        trang_thai_phap_ly: legalStatus,
+        ghi_chu_phap_ly: legalNote
       });
       showNotification('Da ghi nhan danh gia va chuyen trang thai thanh cong', 'success');
       setEvalModal(null);
@@ -38,6 +44,21 @@ const StaffProperties = () => {
     } catch (error) {
       showNotification(error.response?.data?.message || 'Co loi xay ra', 'error');
     }
+  };
+
+  const openEvalModal = (contract) => {
+    setEvalModal(contract);
+    setHienTrang(contract.Property?.hien_trang || '');
+    setSurveyDate(contract.lich_khao_sat ? String(contract.lich_khao_sat).slice(0, 16) : '');
+    setLegalStatus(contract.trang_thai_phap_ly || 'pending');
+    setLegalNote(contract.ghi_chu_phap_ly || '');
+  };
+
+  const legalStatusLabel = {
+    pending: 'Cho kiem tra',
+    verified: 'Hop le',
+    needs_update: 'Can bo sung',
+    rejected: 'Khong hop le'
   };
 
   const handleClaim = async (id) => {
@@ -68,6 +89,23 @@ const StaffProperties = () => {
                 placeholder="Da khao sat thuc te, chu nha dong y hop tac..." 
               />
             </div>
+            <div className="form-group">
+              <label>Lich hen khao sat voi chu nha</label>
+              <input type="datetime-local" value={surveyDate} onChange={(e) => setSurveyDate(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Trang thai phap ly</label>
+              <select value={legalStatus} onChange={(e) => setLegalStatus(e.target.value)}>
+                <option value="pending">Cho kiem tra</option>
+                <option value="verified">Hop le</option>
+                <option value="needs_update">Can bo sung</option>
+                <option value="rejected">Khong hop le</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Ghi chu phap ly</label>
+              <textarea rows="3" value={legalNote} onChange={(e) => setLegalNote(e.target.value)} placeholder="So hong, uy quyen, CCCD chu nha..." />
+            </div>
             <button className="btn btn-primary" style={{ width: '100%', height: '48px', marginTop: 12 }} onClick={handleEvaluate}>
               Xac nhan dong y hop tac & Yeu cau nop tien dam bao
             </button>
@@ -96,26 +134,24 @@ const StaffProperties = () => {
                 </tr>
               </thead>
               <tbody>
-                {contracts.filter(c => ['draft', 'pending_deposit', 'paid'].includes(c.trang_thai)).map((contract) => (
+                {contracts.filter(c => ['draft', 'pending_deposit'].includes(c.trang_thai)).map((contract) => (
                   <tr key={contract.id}>
                     <td className="wrap">
                       <div style={{ fontWeight: 700 }}>{contract.Property?.loai_nha}</div>
                       <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.dia_chi_chi_tiet}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Khao sat: {contract.lich_khao_sat ? new Date(contract.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusLabel[contract.trang_thai_phap_ly] || 'Cho kiem tra'}
+                      </div>
                     </td>
                     <td>{Number(contract.Property?.gia_de_xuat).toLocaleString('vi-VN')} VNĐ</td>
                     <td>
                       {contract.trang_thai === 'draft' && <span className="badge badge-pending">Cho khao sat</span>}
                       {contract.trang_thai === 'pending_deposit' && <span className="badge badge-pending" style={{ background: '#e2e8f0', color: '#4a5568' }}>Cho khach nop tien</span>}
-                      {contract.trang_thai === 'paid' && <span className="badge badge-active">Da nop 1M</span>}
                     </td>
                     <td>
                       {contract.trang_thai === 'draft' ? (
-                        <button className="btn btn-primary btn-sm" onClick={() => { setEvalModal(contract); setHienTrang(contract.Property?.hien_trang || ''); }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => openEvalModal(contract)}>
                           <Edit2 size={16} /> Cap nhat hien trang
-                        </button>
-                      ) : contract.trang_thai === 'paid' ? (
-                        <button className="btn btn-success btn-sm" onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
-                          <Check size={16} /> Tai HD & Kich hoat
                         </button>
                       ) : (
                         <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -125,7 +161,7 @@ const StaffProperties = () => {
                     </td>
                   </tr>
                 ))}
-                {contracts.filter(c => ['draft', 'pending_deposit', 'paid'].includes(c.trang_thai)).length === 0 && (
+                {contracts.filter(c => ['draft', 'pending_deposit'].includes(c.trang_thai)).length === 0 && (
                   <tr><td colSpan="4" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>Hien tai khong co yeu cau nao can xu ly.</td></tr>
                 )}
               </tbody>
@@ -152,11 +188,14 @@ const StaffProperties = () => {
                 </tr>
               </thead>
               <tbody>
-                {contracts.filter(c => ['active', 'terminated', 'cancelled'].includes(c.trang_thai)).map((contract) => (
+                {contracts.filter(c => ['paid', 'active', 'terminated', 'cancelled'].includes(c.trang_thai)).map((contract) => (
                   <tr key={contract.id}>
                     <td className="wrap">
                       <div style={{ fontWeight: 700 }}>{contract.Property?.loai_nha}</div>
                       <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.dia_chi_chi_tiet}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Khao sat: {contract.lich_khao_sat ? new Date(contract.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusLabel[contract.trang_thai_phap_ly] || 'Cho kiem tra'}
+                      </div>
                     </td>
                     <td>{contract.Property?.chu_nha_id?.slice(0, 8)}...</td>
                     <td>
@@ -164,19 +203,27 @@ const StaffProperties = () => {
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Han: {contract.ngay_het_han || '---'}</div>
                     </td>
                     <td>
-                      <span className={`badge ${contract.trang_thai === 'active' ? 'badge-active' : 'badge-rejected'}`}>
-                        {contract.trang_thai}
-                      </span>
+                      {contract.trang_thai === 'paid' && <span className="badge badge-active">Da nop 1M - cho kich hoat</span>}
+                      {contract.trang_thai === 'active' && <span className="badge badge-active">Dang hieu luc</span>}
+                      {['terminated', 'cancelled'].includes(contract.trang_thai) && (
+                        <span className="badge badge-rejected">{contract.trang_thai}</span>
+                      )}
                     </td>
                     <td>
-                      <button className="btn btn-sm" style={{ border: '1px solid #e2e8f0' }} onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
-                        Xem chi tiet
-                      </button>
+                      {contract.trang_thai === 'paid' ? (
+                        <button className="btn btn-success btn-sm" onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
+                          <Check size={16} /> Tai HD & Kich hoat
+                        </button>
+                      ) : (
+                        <button className="btn btn-sm" style={{ border: '1px solid #e2e8f0' }} onClick={() => navigate(`/contracts/deposit/${contract.id}`)}>
+                          Xem chi tiet
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
-                {contracts.filter(c => ['active', 'terminated', 'cancelled'].includes(c.trang_thai)).length === 0 && (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>Chua co hop dong nao duoc kich hoat.</td></tr>
+                {contracts.filter(c => ['paid', 'active', 'terminated', 'cancelled'].includes(c.trang_thai)).length === 0 && (
+                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>Chua co hop dong ky gui nao.</td></tr>
                 )}
               </tbody>
             </table>

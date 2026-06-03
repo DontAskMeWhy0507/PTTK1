@@ -35,6 +35,16 @@ const DepositContract = sequelize.define('DepositContract', {
   ngay_het_han: {
     type: DataTypes.DATEONLY
   },
+  lich_khao_sat: {
+    type: DataTypes.DATE
+  },
+  trang_thai_phap_ly: {
+    type: DataTypes.ENUM('pending', 'verified', 'needs_update', 'rejected'),
+    defaultValue: 'pending'
+  },
+  ghi_chu_phap_ly: {
+    type: DataTypes.TEXT
+  },
   ghi_chu: {
     type: DataTypes.TEXT
   }

@@ -9,6 +9,7 @@ import { useUI } from '../contexts/UIContext';
 const PropertyList = () => {
   const [properties, setProperties] = useState([]);
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({ loai_nha: '', minPrice: '', maxPrice: '', minArea: '', maxArea: '' });
   const [myAppointments, setMyAppointments] = useState([]);
   const { user } = useAuth();
   const { showNotification } = useUI();
@@ -16,12 +17,20 @@ const PropertyList = () => {
 
   const fetchProperties = useCallback(async () => {
     try {
-      const res = await getProperties({ q: search || undefined });
+      const params = {
+        q: search || undefined,
+        loai_nha: filters.loai_nha || undefined,
+        minPrice: filters.minPrice || undefined,
+        maxPrice: filters.maxPrice || undefined,
+        minArea: filters.minArea || undefined,
+        maxArea: filters.maxArea || undefined
+      };
+      const res = await getProperties(params);
       setProperties(res.data?.data || []);
     } catch (err) {
       console.error('Loi tai danh sach nha:', err);
     }
-  }, [search]);
+  }, [search, filters]);
 
   const fetchAppointments = useCallback(async () => {
     if (user?.role === 'customer') {
@@ -40,6 +49,10 @@ const PropertyList = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     fetchProperties();
+  };
+
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const [booking, setBooking] = useState(null);
@@ -90,16 +103,30 @@ const PropertyList = () => {
         )}
       </div>
 
-      <form onSubmit={handleSearch} style={{ position: 'relative', marginBottom: '40px', maxWidth: '800px' }}>
-        <input
-          type="text"
-          placeholder="Tim theo dia chi, loai nha (chung cu, nha rieng...)"
-          style={{ width: '100%', padding: '18px 24px 18px 56px', borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '16px', boxShadow: 'var(--shadow)' }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Search size={22} color="#a0aec0" style={{ position: 'absolute', left: '20px', top: '18px' }} />
-        <button type="submit" className="btn btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', height: '42px' }}>Tim kiem</button>
+      <form onSubmit={handleSearch} style={{ marginBottom: '40px', maxWidth: '960px' }}>
+        <div style={{ position: 'relative', marginBottom: 14 }}>
+          <input
+            type="text"
+            placeholder="Tim theo dia chi, loai nha (chung cu, nha rieng...)"
+            style={{ width: '100%', padding: '18px 24px 18px 56px', borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '16px', boxShadow: 'var(--shadow)' }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Search size={22} color="#a0aec0" style={{ position: 'absolute', left: '20px', top: '18px' }} />
+          <button type="submit" className="btn btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', height: '42px' }}>Tim kiem</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+          <select value={filters.loai_nha} onChange={(e) => updateFilter('loai_nha', e.target.value)} style={{ height: 44 }}>
+            <option value="">Tat ca loai nha</option>
+            <option value="Can ho">Can ho</option>
+            <option value="Nha rieng">Nha rieng</option>
+            <option value="Studio">Studio</option>
+          </select>
+          <input type="number" placeholder="Gia tu" value={filters.minPrice} onChange={(e) => updateFilter('minPrice', e.target.value)} style={{ height: 44 }} />
+          <input type="number" placeholder="Gia den" value={filters.maxPrice} onChange={(e) => updateFilter('maxPrice', e.target.value)} style={{ height: 44 }} />
+          <input type="number" placeholder="Dien tich tu" value={filters.minArea} onChange={(e) => updateFilter('minArea', e.target.value)} style={{ height: 44 }} />
+          <input type="number" placeholder="Dien tich den" value={filters.maxArea} onChange={(e) => updateFilter('maxArea', e.target.value)} style={{ height: 44 }} />
+        </div>
       </form>
 
       {properties.length === 0 && (

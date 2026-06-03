@@ -115,31 +115,36 @@ exports.cancelDepositContract = async (req, res) => {
     if (access.error) return res.status(access.error.status).json({ success: false, message: access.error.message });
     const contract = access.contract;
 
-    // Cho phep admin hoac chu nha huy
     if (req.user.role !== 'admin' && contract.Property?.chu_nha_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Ban khong duoc phep huy hop dong nay' });
+    }
+
+    if (contract.trang_thai !== 'active') {
+      return res.status(400).json({ success: false, message: 'Chi hop dong ky gui dang hieu luc moi duoc huy' });
     }
 
     const rented = await RentalContract.findOne({
       where: {
         nha_cho_thue_id: contract.nha_cho_thue_id,
-        trang_thai: { [Op.in]: ['active', 'completed'] }
+        trang_thai: { [Op.in]: ['pending_payment', 'paid', 'active', 'completed'] }
       }
     });
 
     const today = new Date().toISOString().split('T')[0];
     const expired = contract.ngay_het_han && new Date(contract.ngay_het_han) <= new Date(today);
 
+    const eligibleForRefund = !rented && expired;
+
     await contract.update({
       trang_thai: 'cancelled',
-      ghi_chu: rented
-        ? 'Hop dong ky gui da duoc tat toan do nha da cho thue'
-        : (expired ? 'Chu nha yeu cau huy sau 6 thang, tao phieu hoan tien' : 'Chu nha yeu cau huy truoc han')
+      ghi_chu: eligibleForRefund
+        ? 'Chu nha yeu cau huy sau 6 thang, tao phieu hoan tien'
+        : (rented ? 'Hop dong ky gui huy nhung khong hoan tien do nha da co hop dong thue' : 'Chu nha yeu cau huy truoc han 6 thang, khong hoan tien dam bao')
     });
     await Property.update({ hien_thi_chi_tiet: false }, { where: { id: contract.nha_cho_thue_id } });
 
     let refund = null;
-    if (!rented && expired) {
+    if (eligibleForRefund) {
       refund = await Refund.create({
         hop_dong_ky_gui_id: contract.id,
         ngay_yeu_cau: today,
@@ -159,7 +164,13 @@ exports.cancelDepositContract = async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: 'Da xu ly yeu cau huy hop dong', data: { contract, refund } });
+    res.json({
+      success: true,
+      message: eligibleForRefund
+        ? 'Da huy hop dong va tao phieu hoan tien dam bao'
+        : 'Da huy hop dong. Khong hoan tien dam bao do chua du dieu kien',
+      data: { contract, refund }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -292,13 +303,32 @@ exports.processRefund = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Chi nhan vien hoac admin moi duoc xu ly hoan tien' });
     }
 
-    const refund = await Refund.findByPk(req.params.refundId);
+    const refund = await Refund.findByPk(req.params.refundId, {
+      include: [{ model: DepositContract, include: [{ model: Property }] }]
+    });
     if (!refund) return res.status(404).json({ success: false, message: 'Khong thay phieu hoan tien' });
 
+    const nextStatus = req.body.trang_thai || 'approved';
+    if (!['pending', 'approved', 'paid', 'rejected'].includes(nextStatus)) {
+      return res.status(400).json({ success: false, message: 'Trang thai hoan tien khong hop le' });
+    }
+
     await refund.update({
-      trang_thai: req.body.trang_thai || 'completed',
+      trang_thai: nextStatus,
       ghi_chu: req.body.ghi_chu || refund.ghi_chu,
-      ngay_hoan: req.body.trang_thai === 'completed' ? new Date().toISOString().split('T')[0] : refund.ngay_hoan
+      ngay_hoan: nextStatus === 'paid' ? new Date().toISOString().split('T')[0] : refund.ngay_hoan
+    });
+
+    await logTransaction({
+      user_id: refund.DepositContract?.Property?.chu_nha_id,
+      actor_id: req.user.id,
+      loai_giao_dich: 'deposit_refund',
+      so_tien: refund.so_tien_hoan,
+      doi_tuong: 'refund',
+      doi_tuong_id: refund.id,
+      mo_ta: nextStatus === 'paid'
+        ? 'Nhan vien xac nhan da hoan tien dam bao cho chu nha'
+        : `Nhan vien cap nhat phieu hoan tien sang trang thai ${nextStatus}`
     });
 
     res.json({ success: true, message: 'Da cap nhat trang thai hoan tien', data: refund });
@@ -310,10 +340,13 @@ exports.processRefund = async (req, res) => {
 exports.getTransactionLogs = async (req, res) => {
   try {
     const where = {};
-    if (req.user.role === 'admin') {
-      // Admin xem tat ca
-    } else if (['staff', 'broker'].includes(req.user.role)) {
-      where.actor_id = req.user.id;
+    if (req.user.role === 'admin' || req.user.role === 'staff') {
+      // Admin va nhan vien van phong xem tat ca giao dich
+    } else if (req.user.role === 'broker') {
+      where[Op.or] = [
+        { actor_id: req.user.id },
+        { user_id: req.user.id }
+      ];
     } else {
       where.user_id = req.user.id;
     }

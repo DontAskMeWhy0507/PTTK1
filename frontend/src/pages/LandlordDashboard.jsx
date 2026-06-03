@@ -56,9 +56,13 @@ const LandlordDashboard = () => {
   }, [paymentModal]);
 
   const handleCancel = (contractId) => {
+    const contract = contracts.find((item) => item.id === contractId);
+    const expired = contract?.ngay_het_han && new Date(contract.ngay_het_han) <= new Date();
     showConfirm(
-      'Huy hop dong / Hoan tien',
-      'Ban co chac chan muon gui yeu cau huy hop dong ky gui nay? Neu thoa man dieu kien (sau 6 thang chua cho thue duoc), ban se duoc hoan lai 1.000.000 VNĐ.',
+      expired ? 'Huy hop dong / Hoan tien' : 'Huy hop dong truoc han',
+      expired
+        ? 'Ban co chac chan muon huy hop dong ky gui nay? Neu nha chua co hop dong thue, he thong se tao phieu hoan tien 1.000.000 VND.'
+        : 'Ban co chac chan muon huy hop dong ky gui nay? Hop dong chua du 6 thang nen se khong hoan lai 1.000.000 VND tien dam bao.',
       async () => {
         try {
           await cancelDepositContract(contractId, { ghi_chu: 'Chu nha yeu cau cham dut hop dong' });
@@ -90,6 +94,12 @@ const LandlordDashboard = () => {
     active: { label: 'Dang hieu luc', class: 'badge-active' },
     terminated: { label: 'Tat toan', class: 'badge-rejected' },
     cancelled: { label: 'Da huy', class: 'badge-rejected' }
+  };
+  const legalStatusMap = {
+    pending: 'Cho kiem tra',
+    verified: 'Hop le',
+    needs_update: 'Can bo sung',
+    rejected: 'Khong hop le'
   };
 
   return (
@@ -172,6 +182,9 @@ const LandlordDashboard = () => {
                 <td className="wrap">
                   <div style={{ fontWeight: 700 }}>{c.Property?.loai_nha}</div>
                   <div style={{ fontSize: '13px', color: '#718096' }}>{c.Property?.dia_chi_chi_tiet || 'Dang cap nhat...'}</div>
+                  <div style={{ fontSize: '12px', color: '#718096', marginTop: 4 }}>
+                    Khao sat: {c.lich_khao_sat ? new Date(c.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusMap[c.trang_thai_phap_ly] || 'Cho kiem tra'}
+                  </div>
                 </td>
                 <td>{c.ngay_ky || '---'}</td>
                 <td>{c.ngay_het_han || '---'}</td>
@@ -187,7 +200,9 @@ const LandlordDashboard = () => {
                       <button className="btn btn-success btn-sm" onClick={() => setPaymentModal(c.id)}>Thanh toan 1T</button>
                     )}
                     {['active'].includes(c.trang_thai) && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(c.id)}>Huy / Hoan tien</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(c.id)}>
+                        {c.ngay_het_han && new Date(c.ngay_het_han) <= new Date() ? 'Huy / Hoan tien' : 'Huy khong hoan tien'}
+                      </button>
                     )}
                   </div>
                 </td>

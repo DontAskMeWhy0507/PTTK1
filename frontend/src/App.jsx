@@ -14,6 +14,7 @@ import StaffCommissions from './pages/StaffCommissions';
 import StaffProperties from './pages/StaffProperties';
 import StaffWorkHistory from './pages/StaffWorkHistory';
 import StaffClosedContracts from './pages/StaffClosedContracts';
+import StaffTransactions from './pages/StaffTransactions';
 import AdminUsers from './pages/AdminUsers';
 import ContractDetail from './pages/ContractDetail';
 import LandlordDashboard from './pages/LandlordDashboard';
@@ -78,6 +79,7 @@ const Sidebar = () => {
           <h2>VAN PHONG</h2>
           <Link to="/staff/properties" className={isActive('/staff/properties')}><Key size={18} /> Phe duyet ky gui</Link>
           <Link to="/staff/contracts" className={isActive('/staff/contracts')}><FileText size={18} /> Quan ly hop dong</Link>
+          <Link to="/staff/transactions" className={isActive('/staff/transactions')}><History size={18} /> Lich su giao dich</Link>
         </>
       )}
 
@@ -88,6 +90,7 @@ const Sidebar = () => {
           <Link to="/staff/appointments" className={isActive('/staff/appointments')}><Calendar size={18} /> Quản lý lịch hẹn</Link>
           <Link to="/staff/history" className={isActive('/staff/history')}><History size={18} /> Nhật ký làm việc</Link>
           <Link to="/staff/commissions" className={isActive('/staff/commissions')}><DollarSign size={18} /> Hoa hồng & Thu nhập</Link>
+          <Link to="/staff/transactions" className={isActive('/staff/transactions')}><History size={18} /> Lich su giao dich</Link>
         </>
       )}
 
@@ -151,6 +154,7 @@ const App = () => {
           <Route path="/staff/history" element={<StaffWorkHistory />} />
           <Route path="/staff/contracts" element={<StaffClosedContracts />} />
           <Route path="/staff/commissions" element={<StaffCommissions />} />
+          <Route path="/staff/transactions" element={<StaffTransactions />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/contracts/deposit/:id" element={<ContractDetail />} />
         </Routes>

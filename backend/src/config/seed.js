@@ -8,7 +8,6 @@ const {
   DepositContract,
   Interaction,
   Property,
-  Refund,
   RentalContract,
   TransactionLog,
   User
@@ -26,6 +25,7 @@ async function seed() {
   const today = new Date();
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const nextSurvey = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
   const nextYear = new Date(today);
   nextYear.setFullYear(nextYear.getFullYear() + 1);
   const expiredStart = new Date(today);
@@ -87,6 +87,18 @@ async function seed() {
       hien_trang: 'Het han ky gui, chua cho thue duoc',
       broker_id: null,
       hien_thi_chi_tiet: true
+    },
+    {
+      chu_nha_id: landlord2.id,
+      loai_nha: 'Nha pho',
+      dien_tich: 90,
+      huong_nha: 'Dong',
+      so_luong_phong: 4,
+      dia_chi_chi_tiet: 'So 8 Pho Mau, Long Bien, Ha Noi',
+      gia_de_xuat: 15000000,
+      hien_trang: 'Chu nha moi gui yeu cau, chua khao sat',
+      broker_id: null,
+      hien_thi_chi_tiet: false
     }
   ], { returning: true });
 
@@ -97,7 +109,10 @@ async function seed() {
     ngay_ky: dateOnly(today),
     tien_dam_bao: 1000000,
     trang_thai: 'active',
-    thoi_han_thang: 6
+    thoi_han_thang: 6,
+    lich_khao_sat: dateOnly(today),
+    trang_thai_phap_ly: 'verified',
+    ghi_chu_phap_ly: 'Da doi chieu so hong va thong tin chu nha'
   });
 
   await DepositContract.create({
@@ -105,7 +120,10 @@ async function seed() {
     nhan_vien_id: null,
     tien_dam_bao: 1000000,
     trang_thai: 'pending_deposit',
-    thoi_han_thang: 6
+    thoi_han_thang: 6,
+    lich_khao_sat: nextSurvey,
+    trang_thai_phap_ly: 'needs_update',
+    ghi_chu_phap_ly: 'Can bo sung anh chup giay to nha truoc khi ky gui'
   });
 
   const expiredDeposit = await DepositContract.create({
@@ -114,7 +132,21 @@ async function seed() {
     ngay_ky: dateOnly(expiredStart),
     tien_dam_bao: 1000000,
     trang_thai: 'active',
-    thoi_han_thang: 6
+    thoi_han_thang: 6,
+    lich_khao_sat: dateOnly(expiredStart),
+    trang_thai_phap_ly: 'verified',
+    ghi_chu_phap_ly: 'Hop dong mau het han hon 6 thang, dung de test huy va hoan tien'
+  });
+
+  await DepositContract.create({
+    nha_cho_thue_id: properties[3].id,
+    nhan_vien_id: null,
+    tien_dam_bao: 1000000,
+    trang_thai: 'draft',
+    thoi_han_thang: 6,
+    lich_khao_sat: nextWeek,
+    trang_thai_phap_ly: 'pending',
+    ghi_chu_phap_ly: 'Mau cho nhan vien test cap nhat lich khao sat va phap ly'
   });
 
   console.log('--- Seeding rental contract ---');
@@ -149,16 +181,6 @@ async function seed() {
       trang_thai: 'confirmed',
       last_message: 'Lich xem nha da duoc xac nhan vao ngay mai',
       last_message_by: 'broker'
-    },
-    {
-      khach_hang_id: customer1.id,
-      nha_cho_thue_id: properties[2].id,
-      nhan_vien_id: broker1.id,
-      ngay_gio: nextWeek,
-      ghi_chu: 'Khach quan tam studio',
-      trang_thai: 'pending',
-      last_message: 'Toi muon xem studio nay',
-      last_message_by: 'customer'
     }
   ]);
 
@@ -182,14 +204,7 @@ async function seed() {
     }
   ]);
 
-  console.log('--- Seeding refund and transaction logs ---');
-  const refund = await Refund.create({
-    hop_dong_ky_gui_id: expiredDeposit.id,
-    ngay_yeu_cau: dateOnly(today),
-    so_tien_hoan: 1000000,
-    trang_thai: 'pending',
-    ghi_chu: 'Mau yeu cau hoan tien do het han ky gui'
-  });
+  console.log('--- Seeding transaction logs ---');
 
   await TransactionLog.bulkCreate([
     {
@@ -218,15 +233,6 @@ async function seed() {
       doi_tuong: 'rental_contract',
       doi_tuong_id: paidRental.id,
       mo_ta: 'Hoa hong moi gioi tu hop dong thue mau'
-    },
-    {
-      user_id: landlord2.id,
-      actor_id: staff.id,
-      loai_giao_dich: 'deposit_refund',
-      so_tien: refund.so_tien_hoan,
-      doi_tuong: 'refund',
-      doi_tuong_id: refund.id,
-      mo_ta: 'Yeu cau hoan tien dam bao mau'
     }
   ]);
 
