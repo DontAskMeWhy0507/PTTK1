@@ -30,11 +30,15 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.ENUM('pending', 'proposed', 'confirmed', 'rejected', 'completed', 'cancelled', 'no_show'),
     defaultValue: 'pending'
   },
+  loai_lich_hen: {
+    type: DataTypes.ENUM('property_viewing', 'deposit_survey'),
+    defaultValue: 'property_viewing'
+  },
   last_message: {
     type: DataTypes.TEXT
   },
   last_message_by: {
-    type: DataTypes.ENUM('customer', 'staff', 'broker')
+    type: DataTypes.ENUM('customer', 'landlord', 'staff', 'broker')
   }
 }, {
   tableName: 'lich_hen',

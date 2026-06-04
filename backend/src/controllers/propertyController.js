@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Property, DepositContract } = require('../models');
+const { Appointment, Property, DepositContract, User } = require('../models');
 const { logTransaction } = require('../utils/transactionLog');
 
 const getViewer = (req) => {
@@ -24,13 +24,44 @@ const serializeProperty = (property, showFullDetails) => {
   const maskedAddress = data.dia_chi_chi_tiet
     ? `${data.dia_chi_chi_tiet.substring(0, 15)}...`
     : null;
+  const summary = `${data.loai_nha} - ${data.dien_tich || '---'}m2 - ${Number(data.gia_de_xuat || 0).toLocaleString('vi-VN')}d/thang`;
+
+  if (!showFullDetails) {
+    return {
+      id: data.id,
+      loai_nha: data.loai_nha,
+      dia_chi_chi_tiet: maskedAddress,
+      thong_tin_day_du: false,
+      mo_ta_tom_tat: summary
+    };
+  }
 
   return {
     ...data,
-    dia_chi_chi_tiet: showFullDetails ? data.dia_chi_chi_tiet : maskedAddress,
-    thong_tin_day_du: showFullDetails,
-    mo_ta_tom_tat: `${data.loai_nha} - ${data.dien_tich || '---'}m2 - ${Number(data.gia_de_xuat || 0).toLocaleString('vi-VN')}d/thang`
+    dia_chi_chi_tiet: data.dia_chi_chi_tiet,
+    thong_tin_day_du: true,
+    mo_ta_tom_tat: summary
   };
+};
+
+const findLeastLoadedBrokerId = async () => {
+  const brokers = await User.findAll({ where: { role: 'broker', status: 'active' } });
+  let targetBrokerId = null;
+  let minWorkload = Infinity;
+
+  for (const broker of brokers) {
+    const propCount = await Property.count({ where: { broker_id: broker.id } });
+    const apptCount = await Appointment.count({ where: { nhan_vien_id: broker.id, trang_thai: { [Op.in]: ['pending', 'proposed', 'confirmed'] } } });
+    const customerCount = await User.count({ where: { managed_by_broker_id: broker.id } });
+    const workload = propCount + apptCount + customerCount;
+
+    if (workload < minWorkload) {
+      minWorkload = workload;
+      targetBrokerId = broker.id;
+    }
+  }
+
+  return targetBrokerId;
 };
 
 exports.getAllProperties = async (req, res) => {
@@ -94,6 +125,28 @@ exports.createDepositRequest = async (req, res) => {
     }
 
     const { loai_nha, dien_tich, huong_nha, so_luong_phong, dia_chi_chi_tiet, gia_de_xuat, hien_trang } = req.body;
+    const requiredFields = { loai_nha, dien_tich, huong_nha, so_luong_phong, dia_chi_chi_tiet, gia_de_xuat, hien_trang };
+    const missingFields = Object.entries(requiredFields)
+      .filter(([, value]) => value === undefined || value === null || String(value).trim() === '')
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Vui long cung cap day du thong tin ky gui: ${missingFields.join(', ')}`
+      });
+    }
+
+    if (!req.user.phone_number) {
+      const landlord = await User.findByPk(req.user.id);
+      if (!landlord?.phone_number) {
+        return res.status(400).json({ success: false, message: 'Chu nha can cap nhat so dien thoai lien he truoc khi ky gui' });
+      }
+    }
+
+    if (Number(dien_tich) <= 0 || Number(so_luong_phong) <= 0 || Number(gia_de_xuat) <= 0) {
+      return res.status(400).json({ success: false, message: 'Dien tich, so phong va gia de xuat phai lon hon 0' });
+    }
 
     const property = await Property.create({
       chu_nha_id: req.user.id,
@@ -170,13 +223,22 @@ exports.staffSignContract = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Khach hang chua thanh toan hoac hop dong da duoc xu ly' });
     }
 
+    if (contract.trang_thai_phap_ly !== 'verified') {
+      return res.status(400).json({ success: false, message: 'Chi duoc ky hop dong khi bo phan phap ly da chap nhan dieu khoan' });
+    }
+
     const today = new Date().toISOString().split('T')[0];
     await contract.update({ 
       trang_thai: 'active', 
       ngay_ky: today, 
       nhan_vien_id: req.user.id
     });
-    await Property.update({ hien_thi_chi_tiet: true }, { where: { id: contract.nha_cho_thue_id } });
+    const property = await Property.findByPk(contract.nha_cho_thue_id);
+    const brokerId = property?.broker_id || req.body.broker_id || await findLeastLoadedBrokerId();
+    await Property.update(
+      { hien_thi_chi_tiet: true, broker_id: brokerId || null },
+      { where: { id: contract.nha_cho_thue_id } }
+    );
 
     res.json({ success: true, message: 'Ky hop dong thanh cong, nha da duoc hien thi cho moi gioi', data: contract });
   } catch (error) {

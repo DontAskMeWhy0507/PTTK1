@@ -15,6 +15,10 @@ const publicUser = (user) => ({
 exports.register = async (req, res) => {
   try {
     const { email, password, full_name, phone_number, role } = req.body;
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ success: false, message: 'Vui long nhap day du ho ten, email va mat khau' });
+    }
+
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ success: false, message: 'Email da ton tai' });
 
@@ -25,6 +29,10 @@ exports.register = async (req, res) => {
     const finalRole = req.user?.role === 'admin'
       ? (allowedAdminRoles.includes(role) ? role : 'customer')
       : (allowedPublicRoles.includes(role) ? role : 'customer');
+
+    if (finalRole === 'landlord' && !phone_number) {
+      return res.status(400).json({ success: false, message: 'Chu nha can cung cap so dien thoai lien he' });
+    }
 
     const user = await User.create({
       email,
@@ -58,10 +66,11 @@ exports.login = async (req, res) => {
       {
         id: user.id,
         email: user.email,
-        role: user.role,
-        full_name: user.full_name,
-        is_member: !!user.is_member
-      },
+          role: user.role,
+          full_name: user.full_name,
+          phone_number: user.phone_number,
+          is_member: !!user.is_member
+        },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );

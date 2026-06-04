@@ -46,8 +46,8 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>So dien thoai</label>
-            <input name="phone_number" value={form.phone_number} onChange={handleChange} placeholder="09xx xxx xxx" />
+            <label>So dien thoai {form.role === 'landlord' ? '*' : ''}</label>
+            <input name="phone_number" value={form.phone_number} onChange={handleChange} required={form.role === 'landlord'} placeholder="09xx xxx xxx" />
           </div>
 
           <div className="form-group">

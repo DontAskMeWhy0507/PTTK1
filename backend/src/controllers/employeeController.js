@@ -1,4 +1,5 @@
 const { Appointment, Commission, ContractDocument, DepositContract, Interaction, Property, RentalContract, User } = require('../models');
+const { Op } = require('sequelize');
 const { logTransaction } = require('../utils/transactionLog');
 
 const ensureStaffOrBroker = (req, res) => {
@@ -23,7 +24,7 @@ exports.getAppointments = async (req, res) => {
       where,
       include: [
         { model: User, attributes: ['id', 'full_name', 'email', 'phone_number'] },
-        { model: Property },
+        { model: Property, include: [{ model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] }] },
         { model: User, as: 'Broker', attributes: ['id', 'full_name'] }
       ],
       order: [['created_at', 'DESC']]
@@ -110,7 +111,9 @@ exports.getClosedRentalContracts = async (req, res) => {
 };
 
 exports.createRentalContract = async (req, res) => {
-  if (!ensureStaffOrBroker(req, res)) return;
+  if (!['broker', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'Chi moi gioi moi duoc lap hop dong thue' });
+  }
 
   try {
     const {
@@ -122,6 +125,18 @@ exports.createRentalContract = async (req, res) => {
       ngay_ket_thuc
     } = req.body;
     const appointmentId = req.body.appointment_id;
+
+    if (!appointmentId) {
+      return res.status(400).json({ success: false, message: 'Can chon lich xem nha da chot truoc khi lap hop dong thue' });
+    }
+
+    if (!gia_tri_hop_dong || Number(gia_tri_hop_dong) <= 0 || !ngay_bat_dau || !ngay_ket_thuc) {
+      return res.status(400).json({ success: false, message: 'Can nhap day du gia tri hop dong va thoi han thue' });
+    }
+
+    if (new Date(ngay_ket_thuc) <= new Date(ngay_bat_dau)) {
+      return res.status(400).json({ success: false, message: 'Ngay ket thuc phai sau ngay bat dau' });
+    }
 
     const customer = await User.findByPk(khach_hang_id);
     if (!customer || customer.role !== 'customer') {
@@ -137,10 +152,61 @@ exports.createRentalContract = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Khach thue khong the la chu nha cua bat dong san nay' });
     }
 
+    if (!property.hien_thi_chi_tiet) {
+      return res.status(400).json({ success: false, message: 'Nha nay khong con san sang cho thue' });
+    }
+
+    if (req.user.role === 'broker' && property.broker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Chi moi gioi duoc phan cong moi duoc chot hop dong nha nay' });
+    }
+
+    const appointment = await Appointment.findByPk(appointmentId);
+    if (
+      !appointment ||
+      appointment.khach_hang_id !== khach_hang_id ||
+      appointment.nha_cho_thue_id !== nha_cho_thue_id ||
+      appointment.loai_lich_hen !== 'property_viewing' ||
+      !['confirmed', 'completed'].includes(appointment.trang_thai)
+    ) {
+      return res.status(400).json({ success: false, message: 'Can co lich xem nha da chot/da xem truoc khi lap hop dong thue' });
+    }
+
+    if (req.user.role === 'broker' && appointment.nhan_vien_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Ban khong phu trach lich xem nha nay' });
+    }
+
+    const interaction = await Interaction.findOne({
+      where: {
+        khach_hang_id,
+        nha_cho_thue_id,
+        nhan_vien_id: req.user.role === 'admin' ? appointment.nhan_vien_id : req.user.id
+      }
+    });
+
+    if (!interaction) {
+      return res.status(400).json({ success: false, message: 'Can luu lich su lam viec voi khach hang truoc khi chot hop dong' });
+    }
+
+    const existingContract = await RentalContract.findOne({
+      where: {
+        nha_cho_thue_id,
+        trang_thai: { [Op.in]: ['pending_sign', 'pending_payment', 'paid', 'active', 'completed'] }
+      }
+    });
+
+    if (existingContract) {
+      return res.status(400).json({ success: false, message: 'Nha nay da co hop dong thue dang xu ly hoac da chot' });
+    }
+
+    const brokerId = req.user.role === 'admin' ? appointment.nhan_vien_id : req.user.id;
+    if (!brokerId) {
+      return res.status(400).json({ success: false, message: 'Lich xem nha chua co moi gioi phu trach' });
+    }
+
     const contract = await RentalContract.create({
       khach_hang_id,
       nha_cho_thue_id,
-      nhan_vien_id: req.user.id,
+      nhan_vien_id: brokerId,
       gia_tri_hop_dong,
       phan_tram_hoa_hong: phan_tram_hoa_hong || 3,
       ngay_ky: new Date().toISOString().split('T')[0],
@@ -156,7 +222,7 @@ exports.createRentalContract = async (req, res) => {
     const commissionAmount = Number(contract.tien_hoa_hong || 0);
 
     await Commission.create({
-      nhan_vien_id: req.user.id,
+      nhan_vien_id: brokerId,
       hop_dong_thue_id: contract.id,
       so_tien: commissionAmount,
       loai: 'commission',
@@ -174,7 +240,7 @@ exports.createRentalContract = async (req, res) => {
     });
 
     await logTransaction({
-      user_id: req.user.id,
+      user_id: brokerId,
       actor_id: req.user.id,
       loai_giao_dich: 'commission_pending',
       so_tien: commissionAmount,
@@ -185,7 +251,7 @@ exports.createRentalContract = async (req, res) => {
 
     if (depositDeduction > 0) {
       await Commission.create({
-        nhan_vien_id: req.user.id,
+        nhan_vien_id: brokerId,
         hop_dong_thue_id: contract.id,
         so_tien: depositDeduction,
         loai: 'deduction',
@@ -210,13 +276,13 @@ exports.createRentalContract = async (req, res) => {
 
     if (appointmentId) {
       await Appointment.update(
-        { trang_thai: 'completed', nhan_vien_id: req.user.id },
+        { trang_thai: 'completed', nhan_vien_id: brokerId },
         { where: { id: appointmentId } }
       );
     }
 
     await Property.update(
-      { hien_thi_chi_tiet: false, broker_id: req.user.id },
+      { hien_thi_chi_tiet: false, broker_id: brokerId },
       { where: { id: nha_cho_thue_id } }
     );
 
@@ -233,6 +299,10 @@ exports.payRent = async (req, res) => {
     
     if (contract.khach_hang_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Ban khong co quyen thanh toan hop dong nay' });
+    }
+
+    if (contract.trang_thai !== 'pending_payment') {
+      return res.status(400).json({ success: false, message: 'Hop dong khong o trang thai cho thanh toan' });
     }
 
     await contract.update({ trang_thai: 'paid' });
@@ -304,16 +374,43 @@ exports.updatePropertyReview = async (req, res) => {
   if (!ensureStaffOrBroker(req, res)) return;
 
   try {
-    const property = await Property.findByPk(req.params.id);
-    if (!property) return res.status(404).json({ success: false, message: 'Khong thay nha' });
-
-    await property.update({
-      hien_trang: req.body.hien_trang ?? property.hien_trang,
-      hien_thi_chi_tiet: req.body.hien_thi_chi_tiet ?? property.hien_thi_chi_tiet
+    const property = await Property.findByPk(req.params.id, {
+      include: [{ model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] }]
     });
+    if (!property) return res.status(404).json({ success: false, message: 'Khong thay nha' });
 
     const depositContract = await DepositContract.findOne({ where: { nha_cho_thue_id: property.id } });
     if (depositContract) {
+      if (req.body.trang_thai_hop_dong === 'pending_deposit') {
+        const nextLegalStatus = req.body.trang_thai_phap_ly || depositContract.trang_thai_phap_ly;
+        const nextCondition = req.body.hien_trang ?? property.hien_trang;
+        const confirmedSurvey = await Appointment.findOne({
+          where: {
+            khach_hang_id: property.chu_nha_id,
+            nha_cho_thue_id: property.id,
+            loai_lich_hen: 'deposit_survey',
+            trang_thai: { [Op.in]: ['confirmed', 'completed'] }
+          }
+        });
+
+        if (!confirmedSurvey) {
+          return res.status(400).json({ success: false, message: 'Can gui lich va duoc chu nha xac nhan truoc khi yeu cau nop tien dam bao' });
+        }
+
+        if (!nextCondition || !String(nextCondition).trim()) {
+          return res.status(400).json({ success: false, message: 'Can cap nhat hien trang nha sau khi gap chu nha' });
+        }
+
+        if (nextLegalStatus !== 'verified') {
+          return res.status(400).json({ success: false, message: 'Can duyet phap ly/dieu khoan phat sinh truoc khi yeu cau nop tien dam bao' });
+        }
+      }
+
+      await property.update({
+        hien_trang: req.body.hien_trang ?? property.hien_trang,
+        hien_thi_chi_tiet: req.body.hien_thi_chi_tiet ?? property.hien_thi_chi_tiet
+      });
+
       const contractPatch = {
         nhan_vien_id: depositContract.nhan_vien_id || req.user.id,
         ghi_chu: req.body.ghi_chu ?? depositContract.ghi_chu
@@ -323,6 +420,45 @@ exports.updatePropertyReview = async (req, res) => {
       if (req.body.trang_thai_phap_ly) contractPatch.trang_thai_phap_ly = req.body.trang_thai_phap_ly;
       if (req.body.ghi_chu_phap_ly !== undefined) contractPatch.ghi_chu_phap_ly = req.body.ghi_chu_phap_ly;
       await depositContract.update(contractPatch);
+
+      if (req.body.lich_khao_sat) {
+        const message = req.body.message || 'Nhan vien van phong de xuat lich khao sat nha ky gui.';
+        const appointment = await Appointment.findOne({
+          where: {
+            khach_hang_id: property.chu_nha_id,
+            nha_cho_thue_id: property.id,
+            loai_lich_hen: 'deposit_survey',
+            trang_thai: { [Op.in]: ['pending', 'proposed', 'confirmed', 'rejected'] }
+          }
+        });
+
+        if (appointment) {
+          await appointment.update({
+            nhan_vien_id: appointment.nhan_vien_id || req.user.id,
+            ngay_gio: req.body.lich_khao_sat,
+            trang_thai: 'proposed',
+            last_message: message,
+            last_message_by: 'staff'
+          });
+        } else {
+          await Appointment.create({
+            khach_hang_id: property.chu_nha_id,
+            nha_cho_thue_id: property.id,
+            nhan_vien_id: req.user.id,
+            ngay_gio: req.body.lich_khao_sat,
+            ghi_chu: req.body.ghi_chu || 'Khao sat nha ky gui',
+            trang_thai: 'proposed',
+            loai_lich_hen: 'deposit_survey',
+            last_message: message,
+            last_message_by: 'staff'
+          });
+        }
+      }
+    } else {
+      await property.update({
+        hien_trang: req.body.hien_trang ?? property.hien_trang,
+        hien_thi_chi_tiet: req.body.hien_thi_chi_tiet ?? property.hien_thi_chi_tiet
+      });
     }
 
     res.json({ success: true, message: 'Da cap nhat danh gia nha', data: { property, depositContract } });

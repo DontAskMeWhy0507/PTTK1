@@ -63,6 +63,7 @@ const Sidebar = () => {
           <h2>CHU NHA</h2>
           <Link to="/landlord" className={isActive('/landlord')}><LayoutDashboard size={18} /> Dashboard cua toi</Link>
           <Link to="/deposit-request" className={isActive('/deposit-request')}><PlusCircle size={18} /> Ky gui nha cho thue</Link>
+          <Link to="/appointments" className={isActive('/appointments')}><Calendar size={18} /> Lich hen khao sat</Link>
         </>
       )}
 
@@ -78,6 +79,7 @@ const Sidebar = () => {
         <>
           <h2>VAN PHONG</h2>
           <Link to="/staff/properties" className={isActive('/staff/properties')}><Key size={18} /> Phe duyet ky gui</Link>
+          {user?.role === 'staff' && <Link to="/staff/appointments" className={isActive('/staff/appointments')}><Calendar size={18} /> Lich hen khao sat</Link>}
           <Link to="/staff/contracts" className={isActive('/staff/contracts')}><FileText size={18} /> Quan ly hop dong</Link>
           <Link to="/staff/transactions" className={isActive('/staff/transactions')}><History size={18} /> Lich su giao dich</Link>
         </>

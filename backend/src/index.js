@@ -25,7 +25,18 @@ app.use('/api/employee', employeeRoutes);
 
 const PORT = process.env.PORT || 3001;
 
-configureSqlite().then(() => sequelize.sync({ force: false })).then(() => {
+const ensureSchema = async () => {
+  const columns = await sequelize.getQueryInterface().describeTable('lich_hen').catch(() => ({}));
+  if (!columns.loai_lich_hen) {
+    await sequelize.getQueryInterface().addColumn('lich_hen', 'loai_lich_hen', {
+      type: require('sequelize').DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'property_viewing'
+    });
+  }
+};
+
+configureSqlite().then(() => sequelize.sync({ force: false })).then(ensureSchema).then(() => {
   console.log('--- Database connected ---');
   app.listen(PORT, () => {
     console.log(`--- Server running on port ${PORT} ---`);

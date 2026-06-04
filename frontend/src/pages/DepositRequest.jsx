@@ -66,14 +66,14 @@ const DepositRequest = () => {
             </div>
             <div className="form-group">
               <label>Diện tích (m²)</label>
-              <input type="number" name="dien_tich" value={form.dien_tich} onChange={handleChange} placeholder="VD: 75" />
+              <input type="number" name="dien_tich" value={form.dien_tich} onChange={handleChange} min="1" required placeholder="VD: 75" />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label>Hướng nhà</label>
-              <select name="huong_nha" value={form.huong_nha} onChange={handleChange}>
+              <select name="huong_nha" value={form.huong_nha} onChange={handleChange} required>
                 <option value="">-- Chọn hướng --</option>
                 <option value="Đông">Đông</option>
                 <option value="Tây">Tây</option>
@@ -84,7 +84,7 @@ const DepositRequest = () => {
             </div>
             <div className="form-group">
               <label>Số phòng ngủ</label>
-              <input type="number" name="so_luong_phong" value={form.so_luong_phong} onChange={handleChange} min="1" />
+              <input type="number" name="so_luong_phong" value={form.so_luong_phong} onChange={handleChange} min="1" required />
             </div>
           </div>
 
@@ -95,12 +95,12 @@ const DepositRequest = () => {
           
           <div className="form-group">
             <label>Giá đề xuất cho thuê (VNĐ/tháng)</label>
-            <input type="number" name="gia_de_xuat" value={form.gia_de_xuat} onChange={handleChange} placeholder="VD: 12000000" />
+            <input type="number" name="gia_de_xuat" value={form.gia_de_xuat} onChange={handleChange} min="1" required placeholder="VD: 12000000" />
           </div>
           
           <div className="form-group">
             <label>Hiện trạng & Phap ly</label>
-            <textarea name="hien_trang" value={form.hien_trang} onChange={handleChange} placeholder="VD: Mới bàn giao, đầy đủ nội thất cơ bản, co so do..." rows="4" />
+            <textarea name="hien_trang" value={form.hien_trang} onChange={handleChange} required placeholder="VD: Mới bàn giao, đầy đủ nội thất cơ bản, co so do..." rows="4" />
           </div>
 
           <div style={{ padding: '20px', background: '#ebf8ff', borderRadius: '16px', border: '1px solid #bee3f8', marginBottom: '32px' }}>

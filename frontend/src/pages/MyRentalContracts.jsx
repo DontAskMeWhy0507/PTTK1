@@ -21,6 +21,25 @@ const MyRentalContracts = () => {
   }, []);
 
   useEffect(() => {
+    const loadDocuments = async () => {
+      const entries = await Promise.all(
+        contracts.map(async (contract) => {
+          try {
+            const res = await getRentalContractDetail(contract.id);
+            return [contract.id, res.data?.data?.Documents || []];
+          } catch (error) {
+            return [contract.id, []];
+          }
+        })
+      );
+      setDocumentsByContract(Object.fromEntries(entries));
+    };
+
+    if (contracts.length > 0) loadDocuments();
+    else setDocumentsByContract({});
+  }, [contracts]);
+
+  useEffect(() => {
     let timer;
     if (paymentModal) {
       setCountdown(10);
@@ -47,6 +66,45 @@ const MyRentalContracts = () => {
     } catch (error) {
       showNotification(error.response?.data?.message || 'Loi thanh toan', 'error');
       setPaymentModal(null);
+    }
+  };
+
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleUpload = async (contractId, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await uploadContractDocument('rental', contractId, {
+        ten_file: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        kich_thuoc: file.size,
+        noi_dung_base64: await fileToBase64(file)
+      });
+      event.target.value = '';
+      showNotification('Da tai hop dong thue len', 'success');
+      loadContracts();
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Khong the tai file len', 'error');
+    }
+  };
+
+  const handleDownload = async (documentId) => {
+    try {
+      const res = await downloadContractDocument(documentId);
+      const doc = res.data.data;
+      const link = document.createElement('a');
+      link.href = `data:${doc.mime_type};base64,${doc.noi_dung_base64}`;
+      link.download = doc.ten_file;
+      link.click();
+    } catch (error) {
+      showNotification('Khong the tai file', 'error');
     }
   };
 

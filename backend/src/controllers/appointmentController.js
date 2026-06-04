@@ -1,4 +1,4 @@
-const { Appointment, Property, User } = require('../models');
+const { Appointment, DepositContract, Property, User } = require('../models');
 
 exports.createAppointment = async (req, res) => {
   try {
@@ -74,6 +74,7 @@ exports.createAppointment = async (req, res) => {
       ghi_chu,
       last_message: ghi_chu || 'Tôi muốn xem bất động sản này',
       last_message_by: 'customer',
+      loai_lich_hen: 'property_viewing',
       trang_thai: 'pending'
     });
 
@@ -89,15 +90,15 @@ exports.getMyAppointments = async (req, res) => {
     const role = req.user.role;
     let where = {};
 
-    if (role === 'customer') where = { khach_hang_id: userId };
+    if (role === 'customer' || role === 'landlord') where = { khach_hang_id: userId };
     else if (role === 'broker') where = { nhan_vien_id: userId };
     else if (role === 'staff' || role === 'admin') where = {}; // Staff/Admin xem het
 
     const appointments = await Appointment.findAll({
       where,
       include: [
-        { model: Property },
-        { model: User, attributes: ['full_name', 'phone_number'] }, // Khach hang info
+        { model: Property, include: [{ model: User, as: 'Landlord', attributes: ['id', 'full_name', 'phone_number', 'email'] }] },
+        { model: User, attributes: ['full_name', 'phone_number', 'email', 'role'] }, // Khach hang/Chu nha info
         { model: User, as: 'Broker', attributes: ['full_name', 'phone_number'] } // Moi gioi info
       ],
       order: [['created_at', 'DESC']]
@@ -120,7 +121,7 @@ exports.updateAppointment = async (req, res) => {
     }
 
     const role = req.user.role;
-    const isCustomer = (role === 'customer' && appointment.khach_hang_id === req.user.id);
+    const isCustomer = (['customer', 'landlord'].includes(role) && appointment.khach_hang_id === req.user.id);
     const isBroker = (['broker', 'staff', 'admin'].includes(role) && (appointment.nhan_vien_id === req.user.id || role === 'admin' || role === 'staff'));
 
     if (!isCustomer && !isBroker) {
@@ -132,6 +133,7 @@ exports.updateAppointment = async (req, res) => {
       patch.ngay_gio = req.body.ngay_gio;
       // Neu moi gioi cap nhat ngay gio, chuyen thanh proposed
       if (isBroker && !req.body.trang_thai) patch.trang_thai = 'proposed';
+      if (isCustomer && !req.body.trang_thai) patch.trang_thai = 'pending';
     }
 
     if (req.body.trang_thai) {
@@ -145,6 +147,10 @@ exports.updateAppointment = async (req, res) => {
     }
 
     await appointment.update(patch);
+    if (appointment.loai_lich_hen === 'deposit_survey' && req.body.ngay_gio) {
+      const contract = await DepositContract.findOne({ where: { nha_cho_thue_id: appointment.nha_cho_thue_id } });
+      if (contract) await contract.update({ lich_khao_sat: req.body.ngay_gio });
+    }
     res.json({ success: true, message: 'Cap nhat lich hen thanh cong', data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { ContractDocument, DepositContract, Property, Refund, RentalContract, TransactionLog, User } = require('../models');
+const { Appointment, ContractDocument, DepositContract, Property, Refund, RentalContract, TransactionLog, User } = require('../models');
 const { logTransaction } = require('../utils/transactionLog');
 
 const documentAttributes = [
@@ -80,7 +80,16 @@ exports.getMyDepositContracts = async (req, res) => {
 
     const contracts = await DepositContract.findAll({
       where,
-      include: [{ model: Property }, { model: Refund }],
+      include: [
+        {
+          model: Property,
+          include: [
+            { model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] },
+            { model: Appointment, required: false, where: { loai_lich_hen: 'deposit_survey' } }
+          ]
+        },
+        { model: Refund }
+      ],
       order: [['created_at', 'DESC']]
     });
 
@@ -93,7 +102,16 @@ exports.getMyDepositContracts = async (req, res) => {
 exports.getDepositContractDetail = async (req, res) => {
   try {
     const contract = await DepositContract.findByPk(req.params.id, {
-      include: [{ model: Property }, { model: Refund }]
+      include: [
+        {
+          model: Property,
+          include: [
+            { model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] },
+            { model: Appointment, required: false, where: { loai_lich_hen: 'deposit_survey' } }
+          ]
+        },
+        { model: Refund }
+      ]
     });
 
     if (!contract) return res.status(404).json({ success: false, message: 'Khong thay hop dong' });

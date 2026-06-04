@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api, { createRentalContract, logInteraction, updateAppointment } from '../api';
-import { Check, X, MessageSquare, Clock, Calendar } from 'lucide-react';
+import { X, Clock, Calendar } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 import { useUI } from '../contexts/UIContext';
 
@@ -10,6 +11,7 @@ const StaffAppointments = () => {
   const [msgInput, setMsgInput] = useState({});
   const [proposeDate, setProposeDate] = useState({});
   const { showNotification } = useUI();
+  const { user } = useAuth();
   
   const [contractForm, setContractForm] = useState({
     gia_tri_hop_dong: '',
@@ -83,20 +85,27 @@ const StaffAppointments = () => {
   };
 
   const statusMap = {
-    pending: { label: 'Khach dang cho', color: '#ecc94b' },
-    proposed: { label: 'Ban da de xuat', color: '#4299e1' },
+    pending: { label: 'Ben kia de xuat/cho gui lich', color: '#ecc94b' },
+    proposed: { label: 'Da gui lich - cho xac nhan', color: '#4299e1' },
     confirmed: { label: 'Da chot lich', color: '#48bb78' },
-    rejected: { label: 'Khach tu choi', color: '#f56565' },
+    rejected: { label: 'Ben kia tu choi', color: '#f56565' },
     completed: { label: 'Da xem xong', color: '#718096' },
     cancelled: { label: 'Da huy', color: '#a0aec0' }
   };
+  const visibleAppointments = appointments.filter((appointment) => {
+    if (user?.role === 'broker') return appointment.loai_lich_hen !== 'deposit_survey';
+    if (user?.role === 'staff') return appointment.loai_lich_hen === 'deposit_survey';
+    return true;
+  });
+  const isDepositSurvey = (appointment) => appointment.loai_lich_hen === 'deposit_survey';
+  const participantLabel = (appointment) => isDepositSurvey(appointment) ? 'Chu nha' : 'Khach hang';
 
   return (
     <div>
-      <div className="topbar"><h1>Quan ly lich hen xem nha</h1></div>
+      <div className="topbar"><h1>{user?.role === 'staff' ? 'Quan ly lich hen khao sat' : 'Quan ly lich hen xem nha'}</h1></div>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 24 }}>
-        {appointments.map((a) => (
+        {visibleAppointments.map((a) => (
           <div key={a.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -131,24 +140,38 @@ const StaffAppointments = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
               {['pending', 'proposed', 'rejected', 'confirmed'].includes(a.trang_thai) && (
                 <>
-                  {!a.ngay_gio || a.trang_thai === 'rejected' ? (
+                  {['pending', 'rejected'].includes(a.trang_thai) ? (
                     <button className="btn btn-primary" style={{ justifyContent: 'center', height: '48px' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date().toISOString().slice(0, 16)})}>
-                      <Calendar size={18} /> Gui lich hen cho khach
+                      <Calendar size={18} /> {a.ngay_gio ? `Gui lai lich hen cho ${participantLabel(a).toLowerCase()}` : `Gui lich hen cho ${participantLabel(a).toLowerCase()}`}
                     </button>
-                  ) : (
+                  ) : a.trang_thai === 'confirmed' ? (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-success" style={{ flex: 1 }} onClick={() => handleAction(a.id, { trang_thai: 'confirmed', message: 'Moi gioi da xac nhan lich hen nay.' })}>
-                        <Check size={16} /> Chot lich
-                      </button>
-                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => openWorkPanel(a)}>
-                        Lap hop dong
-                      </button>
+                      {isDepositSurvey(a) ? (
+                        <div style={{ padding: 12, background: '#f0fff4', borderRadius: 12, color: '#2f855a', fontSize: 13, fontWeight: 600, flex: 1 }}>
+                          Lich khao sat da chot. Sau khi gap, cap nhat hien trang tai man Quan ly ky gui.
+                        </div>
+                      ) : ['broker', 'admin'].includes(user?.role) && (
+                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => openWorkPanel(a)}>
+                          Lam viec / Lap hop dong
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ padding: 12, background: '#ebf8ff', borderRadius: 12, color: '#2c5282', fontSize: 13, fontWeight: 600 }}>
+                        Da gui lich hen. {participantLabel(a)} co the xac nhan hoac de xuat gio khac. Ban cung co the xac nhan lich nay de chuyen sang buoc tiep theo.
+                      </div>
+                      {a.ngay_gio && (
+                        <button className="btn btn-success" style={{ justifyContent: 'center' }} onClick={() => handleAction(a.id, { trang_thai: 'confirmed', message: 'Nhan vien xac nhan lich hen nay.' })}>
+                          Xac nhan lich nay
+                        </button>
+                      )}
                     </div>
                   )}
 
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input 
-                      placeholder="Gui tin nhan cho khach..." 
+                      placeholder={`Gui tin nhan cho ${participantLabel(a).toLowerCase()}...`} 
                       value={msgInput[a.id] || ''} 
                       onChange={(e) => setMsgInput({ ...msgInput, [a.id]: e.target.value })}
                       style={{ flex: 1, padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px' }}
@@ -161,12 +184,12 @@ const StaffAppointments = () => {
                   {proposeDate[a.id] && (
                     <div style={{ display: 'flex', gap: 8, padding: 12, background: '#ebf8ff', borderRadius: 12 }}>
                       <input type="datetime-local" value={proposeDate[a.id]} onChange={(e) => setProposeDate({...proposeDate, [a.id]: e.target.value})} style={{ flex: 1 }} />
-                      <button className="btn btn-primary" onClick={() => handleAction(a.id, { ngay_gio: proposeDate[a.id], trang_thai: 'proposed', message: 'Moi gioi de xuat thoi gian xem nha moi.' })}>Luu</button>
+                      <button className="btn btn-primary" onClick={() => handleAction(a.id, { ngay_gio: proposeDate[a.id], trang_thai: 'proposed', message: `${isDepositSurvey(a) ? 'Nhan vien van phong' : 'Moi gioi'} de xuat thoi gian hen moi.` })}>Luu</button>
                       <button className="btn" onClick={() => setProposeDate({...proposeDate, [a.id]: null})}>Huy</button>
                     </div>
                   )}
                   
-                  {a.ngay_gio && !proposeDate[a.id] && (
+                  {a.ngay_gio && !proposeDate[a.id] && a.trang_thai !== 'confirmed' && (
                     <button className="btn" style={{ border: '1px dashed #cbd5e0', justifyContent: 'center' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date(a.ngay_gio).toISOString().slice(0, 16)})}>
                       <Calendar size={16} /> Doi thoi gian khac
                     </button>
@@ -176,7 +199,7 @@ const StaffAppointments = () => {
             </div>
           </div>
         ))}
-        {appointments.length === 0 && (
+        {visibleAppointments.length === 0 && (
           <div style={{ gridColumn: '1/-1', padding: 80, textAlign: 'center', background: '#fff', borderRadius: 20 }}>
             <Calendar size={48} color="#cbd5e0" style={{ marginBottom: 16 }} />
             <p style={{ color: '#718096', fontSize: '16px' }}>Hien tai chua co yeu cau xem nha nao.</p>

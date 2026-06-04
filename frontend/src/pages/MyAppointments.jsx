@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api, { updateAppointment } from '../api';
 import { Check, X, MessageSquare, Clock, Calendar, User } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const MyAppointments = () => {
@@ -9,6 +10,7 @@ const MyAppointments = () => {
   const [msgInput, setMsgInput] = useState({});
   const [reschedule, setReschedule] = useState({});
   const { showNotification } = useUI();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const loadAppointments = () => {
@@ -38,10 +40,12 @@ const MyAppointments = () => {
     cancelled: { label: 'Da huy', color: '#a0aec0' }
   };
 
+  const isDepositSurvey = (appointment) => appointment.loai_lich_hen === 'deposit_survey';
+
   return (
     <div>
       <div className="topbar">
-        <h1>Lich hen xem nha cua toi</h1>
+        <h1>{user?.role === 'landlord' ? 'Lich hen khao sat ky gui' : 'Lich hen xem nha cua toi'}</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))', gap: 24 }}>
@@ -49,7 +53,7 @@ const MyAppointments = () => {
           <div key={a.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700 }}>{a.Property?.loai_nha}</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: 700 }}>{isDepositSurvey(a) ? 'Khao sat nha ky gui' : a.Property?.loai_nha}</h3>
                 <p style={{ fontSize: '13px', color: '#718096', marginTop: 4 }}>{a.Property?.dia_chi_chi_tiet}</p>
               </div>
               <span className="badge" style={{ background: statusMap[a.trang_thai]?.color || '#edf2f7', color: '#fff' }}>
@@ -59,10 +63,10 @@ const MyAppointments = () => {
 
             <div style={{ padding: '12px', background: '#f7fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
               <p style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Clock size={16} color="#3182ce" /> <strong>Thoi gian hen:</strong> {new Date(a.ngay_gio).toLocaleString('vi-VN')}
+                <Clock size={16} color="#3182ce" /> <strong>Thoi gian hen:</strong> {a.ngay_gio ? new Date(a.ngay_gio).toLocaleString('vi-VN') : 'Dang cho de xuat'}
               </p>
               <p style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: 8, color: '#4a5568' }}>
-                <User size={16} color="#38a169" /> <strong>Moi gioi:</strong> {a.Broker?.full_name || 'Dang phan cong...'}
+                <User size={16} color="#38a169" /> <strong>{isDepositSurvey(a) ? 'Nhan vien phu trach:' : 'Moi gioi:'}</strong> {a.Broker?.full_name || 'Dang phan cong...'}
               </p>
             </div>
 
@@ -79,7 +83,7 @@ const MyAppointments = () => {
               {a.trang_thai === 'proposed' && (
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button className="btn btn-success" style={{ flex: 1 }} onClick={() => handleAction(a.id, { trang_thai: 'confirmed', message: 'Toi dong y voi thoi gian nay.' })}>
-                    <Check size={16} /> Dong y lich moi
+                    <Check size={16} /> {isDepositSurvey(a) ? 'Xac nhan lich' : 'Dong y lich moi'}
                   </button>
                   <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => handleAction(a.id, { trang_thai: 'rejected', message: 'Thoi gian nay khong tien cho toi.' })}>
                     <X size={16} /> Tu choi
@@ -108,7 +112,7 @@ const MyAppointments = () => {
                       <button className="btn" onClick={() => setReschedule({...reschedule, [a.id]: null})}>Huy</button>
                     </div>
                   ) : (
-                    <button className="btn" style={{ border: '1px dashed #cbd5e0', justifyContent: 'center' }} onClick={() => setReschedule({...reschedule, [a.id]: new Date(a.ngay_gio).toISOString().slice(0, 16)})}>
+                    <button className="btn" style={{ border: '1px dashed #cbd5e0', justifyContent: 'center' }} onClick={() => setReschedule({...reschedule, [a.id]: a.ngay_gio ? new Date(a.ngay_gio).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)})}>
                       <Calendar size={16} /> De xuat gio khac
                     </button>
                   )}
@@ -116,7 +120,7 @@ const MyAppointments = () => {
               )}
               
               {['pending', 'confirmed'].includes(a.trang_thai) && (
-                <button className="btn" style={{ color: '#e53e3e', padding: 0, justifyContent: 'flex-end', fontSize: '13px' }} onClick={() => handleAction(a.id, { trang_thai: 'cancelled', message: 'Khach hang da huy lich hen.' })}>
+                <button className="btn" style={{ color: '#e53e3e', padding: 0, justifyContent: 'flex-end', fontSize: '13px' }} onClick={() => handleAction(a.id, { trang_thai: 'cancelled', message: `${isDepositSurvey(a) ? 'Chu nha' : 'Khach hang'} da huy lich hen.` })}>
                   Huy lich hen nay
                 </button>
               )}
@@ -128,8 +132,8 @@ const MyAppointments = () => {
           <div style={{ gridColumn: '1/-1', padding: '100px 20px', textAlign: 'center', background: '#fff', borderRadius: '24px', border: '1px dashed #cbd5e0' }}>
             <Calendar size={64} color="#cbd5e0" style={{ marginBottom: 20 }} />
             <h3 style={{ color: '#4a5568' }}>Ban chua co lich hen nao</h3>
-            <p style={{ marginTop: 12, color: '#718096' }}>Hay kham pha cac bat dong san va gui yeu cau xem nha.</p>
-            <button className="btn btn-primary" style={{ marginTop: 24 }} onClick={() => navigate('/properties')}>Tim nha ngay</button>
+            <p style={{ marginTop: 12, color: '#718096' }}>{user?.role === 'landlord' ? 'Khi nhan vien gui lich khao sat, lich se hien thi tai day.' : 'Hay kham pha cac bat dong san va gui yeu cau xem nha.'}</p>
+            {user?.role !== 'landlord' && <button className="btn btn-primary" style={{ marginTop: 24 }} onClick={() => navigate('/properties')}>Tim nha ngay</button>}
           </div>
         )}
       </div>

@@ -19,6 +19,7 @@ module.exports = async (req, res, next) => {
       email: user.email,
       role: user.role,
       full_name: user.full_name,
+      phone_number: user.phone_number,
       is_member: !!user.is_member
     };
     next();

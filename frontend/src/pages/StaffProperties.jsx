@@ -34,15 +34,33 @@ const StaffProperties = () => {
       await updatePropertyReview(evalModal.nha_cho_thue_id, {
         hien_trang: hienTrang,
         trang_thai_hop_dong: 'pending_deposit',
-        lich_khao_sat: surveyDate || null,
         trang_thai_phap_ly: legalStatus,
         ghi_chu_phap_ly: legalNote
       });
-      showNotification('Da ghi nhan danh gia va chuyen trang thai thanh cong', 'success');
+      showNotification('Da cap nhat hien trang va yeu cau chu nha nop tien dam bao', 'success');
       setEvalModal(null);
       loadData();
     } catch (error) {
       showNotification(error.response?.data?.message || 'Co loi xay ra', 'error');
+    }
+  };
+
+  const handleSendSurveyAppointment = async () => {
+    if (!surveyDate) {
+      showNotification('Vui long chon lich hen khao sat truoc khi gui', 'error');
+      return;
+    }
+
+    try {
+      await updatePropertyReview(evalModal.nha_cho_thue_id, {
+        lich_khao_sat: surveyDate,
+        message: 'Nhan vien van phong de xuat lich khao sat nha ky gui. Chu nha vui long xac nhan hoac de xuat lich khac.'
+      });
+      showNotification('Da gui lich hen khao sat cho chu nha', 'success');
+      setEvalModal(null);
+      loadData();
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Khong the gui lich hen', 'error');
     }
   };
 
@@ -59,6 +77,14 @@ const StaffProperties = () => {
     verified: 'Hop le',
     needs_update: 'Can bo sung',
     rejected: 'Khong hop le'
+  };
+  const appointmentStatusLabel = {
+    pending: 'Chu nha de xuat lai',
+    proposed: 'Cho chu nha xac nhan',
+    confirmed: 'Da chot lich',
+    rejected: 'Chu nha tu choi',
+    completed: 'Da gap',
+    cancelled: 'Da huy'
   };
 
   const handleClaim = async (id) => {
@@ -93,6 +119,9 @@ const StaffProperties = () => {
               <label>Lich hen khao sat voi chu nha</label>
               <input type="datetime-local" value={surveyDate} onChange={(e) => setSurveyDate(e.target.value)} />
             </div>
+            <button className="btn btn-primary" style={{ width: '100%', height: '44px', marginBottom: 16 }} onClick={handleSendSurveyAppointment}>
+              Gui lich hen khao sat cho chu nha
+            </button>
             <div className="form-group">
               <label>Trang thai phap ly</label>
               <select value={legalStatus} onChange={(e) => setLegalStatus(e.target.value)}>
@@ -107,7 +136,7 @@ const StaffProperties = () => {
               <textarea rows="3" value={legalNote} onChange={(e) => setLegalNote(e.target.value)} placeholder="So hong, uy quyen, CCCD chu nha..." />
             </div>
             <button className="btn btn-primary" style={{ width: '100%', height: '48px', marginTop: 12 }} onClick={handleEvaluate}>
-              Xac nhan dong y hop tac & Yeu cau nop tien dam bao
+              Cap nhat hien trang & Yeu cau nop 1 trieu
             </button>
           </div>
         </div>
@@ -140,7 +169,13 @@ const StaffProperties = () => {
                       <div style={{ fontWeight: 700 }}>{contract.Property?.loai_nha}</div>
                       <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.dia_chi_chi_tiet}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Chu nha: {contract.Property?.Landlord?.full_name || '---'} | {contract.Property?.Landlord?.phone_number || 'Chua co SDT'} | {contract.Property?.Landlord?.email || ''}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4 }}>
                         Khao sat: {contract.lich_khao_sat ? new Date(contract.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusLabel[contract.trang_thai_phap_ly] || 'Cho kiem tra'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Lich hen: {appointmentStatusLabel[contract.Property?.Appointments?.[0]?.trang_thai] || 'Chua gui'}
                       </div>
                     </td>
                     <td>{Number(contract.Property?.gia_de_xuat).toLocaleString('vi-VN')} VNĐ</td>
@@ -197,7 +232,11 @@ const StaffProperties = () => {
                         Khao sat: {contract.lich_khao_sat ? new Date(contract.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusLabel[contract.trang_thai_phap_ly] || 'Cho kiem tra'}
                       </div>
                     </td>
-                    <td>{contract.Property?.chu_nha_id?.slice(0, 8)}...</td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{contract.Property?.Landlord?.full_name || contract.Property?.chu_nha_id?.slice(0, 8)}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{contract.Property?.Landlord?.phone_number || '---'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{contract.Property?.Landlord?.email || ''}</div>
+                    </td>
                     <td>
                       <div>Ky: {contract.ngay_ky || '---'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Han: {contract.ngay_het_han || '---'}</div>
