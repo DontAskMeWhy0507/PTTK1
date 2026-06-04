@@ -1,18 +1,44 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createDepositRequest } from '../api';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Upload, X } from 'lucide-react';
 
 import { useUI } from '../contexts/UIContext';
 
 const DepositRequest = () => {
-  const [form, setForm] = useState({ loai_nha: '', dien_tich: '', huong_nha: '', so_luong_phong: 1, dia_chi_chi_tiet: '', gia_de_xuat: '', hien_trang: '' });
+  const [form, setForm] = useState({ loai_nha: '', dien_tich: '', huong_nha: '', so_luong_phong: 1, dia_chi_chi_tiet: '', gia_de_xuat: '', hien_trang: '', hinh_anh: '' });
+  const [preview, setPreview] = useState(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const { showNotification } = useUI();
   const navigate = useNavigate();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const base64 = await fileToBase64(file);
+        setForm({ ...form, hinh_anh: base64 });
+        setPreview(base64);
+      } catch (err) {
+        showNotification('Loi tai anh', 'error');
+      }
+    }
+  };
+
+  const removeImage = () => {
+    setForm({ ...form, hinh_anh: '' });
+    setPreview(null);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,6 +117,28 @@ const DepositRequest = () => {
           <div className="form-group">
             <label>Địa chỉ chính xác *</label>
             <input type="text" name="dia_chi_chi_tiet" value={form.dia_chi_chi_tiet} onChange={handleChange} required placeholder="VD: 123 Đường Láng, Đống Đa, Hà Nội" />
+          </div>
+
+          <div className="form-group">
+            <label>Hình ảnh nhà *</label>
+            <div style={{ marginTop: 8 }}>
+              {!preview ? (
+                <div style={{ position: 'relative' }}>
+                  <input type="file" accept="image/*" onChange={handleImageChange} style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 2 }} />
+                  <div style={{ padding: '32px', border: '2px dashed #cbd5e0', borderRadius: '18px', textAlign: 'center', color: '#718096', background: '#f7fafc' }}>
+                    <Upload size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
+                    <p style={{ fontSize: '14px' }}>Nhấn để tải ảnh lên (Ảnh mặt tiền, phòng khách...)</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ position: 'relative', width: 'fit-content' }}>
+                  <img src={preview} alt="Preview" style={{ width: '100%', maxWidth: '300px', borderRadius: '18px', boxShadow: 'var(--shadow)' }} />
+                  <button type="button" onClick={removeImage} style={{ position: 'absolute', top: -10, right: -10, background: '#e53e3e', color: '#fff', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="form-group">

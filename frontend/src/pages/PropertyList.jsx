@@ -115,17 +115,31 @@ const PropertyList = () => {
           <Search size={22} color="#a0aec0" style={{ position: 'absolute', left: '20px', top: '18px' }} />
           <button type="submit" className="btn btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', height: '42px' }}>Tim kiem</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-          <select value={filters.loai_nha} onChange={(e) => updateFilter('loai_nha', e.target.value)} style={{ height: 44 }}>
-            <option value="">Tat ca loai nha</option>
-            <option value="Can ho">Can ho</option>
-            <option value="Nha rieng">Nha rieng</option>
-            <option value="Studio">Studio</option>
-          </select>
-          <input type="number" placeholder="Gia tu" value={filters.minPrice} onChange={(e) => updateFilter('minPrice', e.target.value)} style={{ height: 44 }} />
-          <input type="number" placeholder="Gia den" value={filters.maxPrice} onChange={(e) => updateFilter('maxPrice', e.target.value)} style={{ height: 44 }} />
-          <input type="number" placeholder="Dien tich tu" value={filters.minArea} onChange={(e) => updateFilter('minArea', e.target.value)} style={{ height: 44 }} />
-          <input type="number" placeholder="Dien tich den" value={filters.maxArea} onChange={(e) => updateFilter('maxArea', e.target.value)} style={{ height: 44 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select value={filters.loai_nha} onChange={(e) => updateFilter('loai_nha', e.target.value)} style={{ height: 44, width: '100%' }}>
+              <option value="">Tat ca loai nha</option>
+              <option value="Can ho chung cu">Can ho chung cu</option>
+              <option value="Nha rieng">Nha rieng</option>
+              <option value="Nha pho">Nha pho</option>
+              <option value="Studio">Studio</option>
+              <option value="Phong tro">Phong tro</option>
+              <option value="Mat bang">Mat bang kinh doanh</option>
+              <option value="Van phong">Van phong</option>
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <input type="number" placeholder="Gia tu (VND)" value={filters.minPrice} onChange={(e) => updateFilter('minPrice', e.target.value)} style={{ height: 44, width: '100%' }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <input type="number" placeholder="Gia den" value={filters.maxPrice} onChange={(e) => updateFilter('maxPrice', e.target.value)} style={{ height: 44, width: '100%' }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <input type="number" placeholder="Dien tich tu (m²)" value={filters.minArea} onChange={(e) => updateFilter('minArea', e.target.value)} style={{ height: 44, width: '100%' }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <input type="number" placeholder="Dien tich den" value={filters.maxArea} onChange={(e) => updateFilter('maxArea', e.target.value)} style={{ height: 44, width: '100%' }} />
+          </div>
         </div>
       </form>
 
@@ -145,9 +159,15 @@ const PropertyList = () => {
           
           return (
           <div key={p.id} className="property-card" style={isOwner ? { border: '2px solid #ecc94b', background: '#fffff0' } : {}}>
-            <div className="img" style={{ background: isOwner ? 'linear-gradient(135deg, #fefcbf, #fbd38d)' : 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}>
-              <Home size={48} color={isOwner ? "#d69e2e" : "#3182ce"} />
-            </div>
+            {p.hinh_anh ? (
+              <div className="img" style={{ padding: 0, overflow: 'hidden' }}>
+                <img src={p.hinh_anh} alt={p.loai_nha} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ) : (
+              <div className="img" style={{ background: isOwner ? 'linear-gradient(135deg, #fefcbf, #fbd38d)' : 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}>
+                <Home size={48} color={isOwner ? "#d69e2e" : "#3182ce"} />
+              </div>
+            )}
             <div className="body">
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <span className="badge badge-active">{p.loai_nha}</span>

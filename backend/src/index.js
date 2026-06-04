@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { sequelize, configureSqlite } = require('./config/database');
 require('./models');
 require('./jobs/depositExpiryJob');
@@ -9,6 +10,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Serve images
+app.use('/images', express.static(path.join(__dirname, '../../Nha_Image')));
 
 // Routes
 const propertyRoutes = require('./routes/propertyRoutes');

@@ -211,13 +211,22 @@ exports.cancelDepositContract = async (req, res) => {
 
     let refund = null;
     if (eligibleForRefund) {
+      // Auto-pay refund if eligible
       refund = await Refund.create({
         hop_dong_ky_gui_id: contract.id,
         ngay_yeu_cau: today,
+        ngay_hoan: today,
         so_tien_hoan: contract.tien_dam_bao,
-        trang_thai: 'pending',
-        ghi_chu: req.body?.ghi_chu || 'Hoan tien dam bao do het han 6 thang va chua co khach thue'
+        trang_thai: 'paid',
+        ghi_chu: req.body?.ghi_chu || 'Hoan tien dam bao tu dong do het han 6 thang va chua co khach thue'
       });
+
+      // Update landlord balance
+      const landlord = await User.findByPk(contract.Property.chu_nha_id);
+      if (landlord) {
+        const newBalance = Number(landlord.account_balance || 0) + Number(contract.tien_dam_bao);
+        await landlord.update({ account_balance: newBalance });
+      }
 
       await logTransaction({
         user_id: contract.Property.chu_nha_id,
@@ -226,14 +235,14 @@ exports.cancelDepositContract = async (req, res) => {
         so_tien: contract.tien_dam_bao,
         doi_tuong: 'refund',
         doi_tuong_id: refund.id,
-        mo_ta: 'Tao yeu cau hoan tien dam bao cho chu nha'
+        mo_ta: 'Tu dong hoan tien dam bao vao tai khoan chu nha do qua han 6 thang'
       });
     }
 
     res.json({
       success: true,
       message: eligibleForRefund
-        ? 'Da huy hop dong va tao phieu hoan tien dam bao'
+        ? 'Da huy hop dong va tu dong hoan tien dam bao vao tai khoan cua ban'
         : 'Da huy hop dong. Khong hoan tien dam bao do chua du dieu kien',
       data: { contract, refund }
     });

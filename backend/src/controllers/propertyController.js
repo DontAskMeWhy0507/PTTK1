@@ -30,6 +30,7 @@ const serializeProperty = (property, showFullDetails) => {
     return {
       id: data.id,
       loai_nha: data.loai_nha,
+      hinh_anh: data.hinh_anh,
       dia_chi_chi_tiet: maskedAddress,
       thong_tin_day_du: false,
       mo_ta_tom_tat: summary
@@ -128,7 +129,7 @@ exports.createDepositRequest = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Chi Chu nha moi duoc thuc hien ky gui nha' });
     }
 
-    const { loai_nha, dien_tich, huong_nha, so_luong_phong, dia_chi_chi_tiet, gia_de_xuat, hien_trang } = req.body;
+    const { loai_nha, dien_tich, huong_nha, so_luong_phong, dia_chi_chi_tiet, gia_de_xuat, hien_trang, hinh_anh } = req.body;
     const requiredFields = { loai_nha, dien_tich, huong_nha, so_luong_phong, dia_chi_chi_tiet, gia_de_xuat, hien_trang };
     const missingFields = Object.entries(requiredFields)
       .filter(([, value]) => value === undefined || value === null || String(value).trim() === '')
@@ -161,6 +162,7 @@ exports.createDepositRequest = async (req, res) => {
       dia_chi_chi_tiet,
       gia_de_xuat,
       hien_trang,
+      hinh_anh,
       hien_thi_chi_tiet: false
     });
 

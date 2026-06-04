@@ -8,6 +8,7 @@ const {
   DepositContract,
   Interaction,
   Property,
+  Refund,
   RentalContract,
   TransactionLog,
   User
@@ -63,7 +64,8 @@ async function seed() {
       gia_de_xuat: 12000000,
       hien_trang: 'Moi ban giao, day du noi that',
       broker_id: broker1.id,
-      hien_thi_chi_tiet: false
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-daniel-flores-2150208368-32322028.jpg'
     },
     {
       chu_nha_id: landlord1.id,
@@ -75,7 +77,8 @@ async function seed() {
       gia_de_xuat: 8500000,
       hien_trang: 'Dang cho nhan vien danh gia',
       broker_id: null,
-      hien_thi_chi_tiet: false
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-hson-34574610.jpg'
     },
     {
       chu_nha_id: landlord2.id,
@@ -87,7 +90,8 @@ async function seed() {
       gia_de_xuat: 6500000,
       hien_trang: 'Het han ky gui, chua cho thue duoc',
       broker_id: null,
-      hien_thi_chi_tiet: false
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-hson-34574611.jpg'
     },
     {
       chu_nha_id: landlord2.id,
@@ -99,7 +103,8 @@ async function seed() {
       gia_de_xuat: 15000000,
       hien_trang: 'Chu nha moi gui yeu cau, chua khao sat',
       broker_id: null,
-      hien_thi_chi_tiet: false
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-khoa-le-1920596591-31829243.jpg'
     },
     {
       chu_nha_id: landlord1.id,
@@ -111,7 +116,8 @@ async function seed() {
       gia_de_xuat: 18000000,
       hien_trang: 'Da xac minh phap ly, san sang cho khach xem',
       broker_id: broker2.id,
-      hien_thi_chi_tiet: true
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-nhi-huynh-2126546965-35049188.jpg'
     },
     {
       chu_nha_id: landlord2.id,
@@ -123,7 +129,8 @@ async function seed() {
       gia_de_xuat: 22000000,
       hien_trang: 'Dang cho chu nha nop tien dam bao sau khao sat',
       broker_id: null,
-      hien_thi_chi_tiet: false
+      hien_thi_chi_tiet: false,
+      hinh_anh: '/images/pexels-thoinamcao-15867755.jpg'
     },
     {
       chu_nha_id: landlord1.id,
@@ -135,7 +142,47 @@ async function seed() {
       gia_de_xuat: 5500000,
       hien_trang: 'Da duyet va hien thi de khach dat lich',
       broker_id: null,
-      hien_thi_chi_tiet: true
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-khoa-le-1920596591-31829243.jpg'
+    },
+    {
+      chu_nha_id: landlord1.id,
+      loai_nha: 'Can ho Penthouse',
+      dien_tich: 150,
+      huong_nha: 'Dong Nam',
+      so_luong_phong: 3,
+      dia_chi_chi_tiet: 'Tang 45, Keangnam Landmark, Nam Tu Liem, Ha Noi',
+      gia_de_xuat: 45000000,
+      hien_trang: 'Noi that xa hoa, view toan thanh pho',
+      broker_id: broker1.id,
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-daniel-flores-2150208368-32322028.jpg'
+    },
+    {
+      chu_nha_id: landlord2.id,
+      loai_nha: 'Nha pho thuong mai',
+      dien_tich: 120,
+      huong_nha: 'Nam',
+      so_luong_phong: 5,
+      dia_chi_chi_tiet: 'Shophouse B4, Vinhomes Ocean Park, Gia Lam, Ha Noi',
+      gia_de_xuat: 35000000,
+      hien_trang: 'Tien kinh doanh, moi hoan thien',
+      broker_id: null,
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-nhi-huynh-2126546965-35049188.jpg'
+    },
+    {
+      chu_nha_id: landlord1.id,
+      loai_nha: 'Biet thu song lap',
+      dien_tich: 250,
+      huong_nha: 'Tay Nam',
+      so_luong_phong: 4,
+      dia_chi_chi_tiet: 'Khu biet thu Ciputra, Tay Ho, Ha Noi',
+      gia_de_xuat: 60000000,
+      hien_trang: 'Day du san vuon, cho nguoi nuoc ngoai thue',
+      broker_id: broker2.id,
+      hien_thi_chi_tiet: true,
+      hinh_anh: '/images/pexels-thoinamcao-15867755.jpg'
     }
   ], { returning: true });
 
@@ -169,15 +216,44 @@ async function seed() {
     nhan_vien_id: staff.id,
     ngay_ky: dateOnly(expiredStart),
     tien_dam_bao: 1000000,
-    trang_thai: 'active',
+    trang_thai: 'cancelled',
     thoi_han_thang: 6,
     lich_khao_sat: dateOnly(expiredStart),
     trang_thai_phap_ly: 'verified',
-    ghi_chu_phap_ly: 'Hop dong mau het han hon 6 thang, dung de test huy va hoan tien'
+    ghi_chu: 'Dung de test truong hop da hoan tien xong'
+  });
+
+  await Refund.create({
+    hop_dong_ky_gui_id: expiredDeposit.id,
+    ngay_yeu_cau: dateOnly(today),
+    ngay_hoan: dateOnly(today),
+    so_tien_hoan: 1000000,
+    trang_thai: 'paid',
+    ghi_chu: 'Hoan tien ky gui do het han va chu nha khong muon gia han'
+  });
+
+  const pendingRefundDeposit = await DepositContract.create({
+    nha_cho_thue_id: properties[3].id,
+    nhan_vien_id: staff.id,
+    ngay_ky: dateOnly(expiredStart),
+    tien_dam_bao: 1000000,
+    trang_thai: 'cancelled',
+    thoi_han_thang: 6,
+    lich_khao_sat: dateOnly(expiredStart),
+    trang_thai_phap_ly: 'verified',
+    ghi_chu: 'Dung de test truong hop dang cho duyet hoan tien'
+  });
+
+  await Refund.create({
+    hop_dong_ky_gui_id: pendingRefundDeposit.id,
+    ngay_yeu_cau: dateOnly(today),
+    so_tien_hoan: 1000000,
+    trang_thai: 'pending',
+    ghi_chu: 'Yeu cau hoan tien do chu nha muon lay lai nha'
   });
 
   await DepositContract.create({
-    nha_cho_thue_id: properties[3].id,
+    nha_cho_thue_id: properties[7].id,
     nhan_vien_id: null,
     tien_dam_bao: 1000000,
     trang_thai: 'draft',
@@ -213,13 +289,13 @@ async function seed() {
   await DepositContract.create({
     nha_cho_thue_id: properties[6].id,
     nhan_vien_id: staff.id,
-    ngay_ky: dateOnly(today),
+    ngay_ky: dateOnly(expiredStart),
     tien_dam_bao: 1000000,
     trang_thai: 'active',
     thoi_han_thang: 6,
-    lich_khao_sat: dateOnly(today),
+    lich_khao_sat: dateOnly(expiredStart),
     trang_thai_phap_ly: 'verified',
-    ghi_chu_phap_ly: 'Nha active chua co moi gioi, dung de test broker nhan nha'
+    ghi_chu_phap_ly: 'Dung de test truong hop qua han 6 thang duoc hoan tien 100%'
   });
 
   console.log('--- Seeding rental contract ---');

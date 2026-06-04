@@ -38,6 +38,10 @@ const Property = sequelize.define('Property', {
   hien_trang: {
     type: DataTypes.STRING
   },
+  hinh_anh: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   hien_thi_chi_tiet: {
     type: DataTypes.BOOLEAN,
     defaultValue: false

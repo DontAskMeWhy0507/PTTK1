@@ -72,9 +72,15 @@ const PropertyDetail = () => {
 
       <div className="property-detail-layout">
         <div className="property-hero">
-          <div className="property-hero-image" style={{ background: 'linear-gradient(135deg, #3182ce, #63b3ed)' }}>
-            <Home size={64} color="#fff" />
-          </div>
+          {property.hinh_anh ? (
+            <div className="property-hero-image" style={{ padding: 0, overflow: 'hidden' }}>
+              <img src={property.hinh_anh} alt={property.loai_nha} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          ) : (
+            <div className="property-hero-image" style={{ background: 'linear-gradient(135deg, #3182ce, #63b3ed)' }}>
+              <Home size={64} color="#fff" />
+            </div>
+          )}
           <div className="property-hero-body">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>

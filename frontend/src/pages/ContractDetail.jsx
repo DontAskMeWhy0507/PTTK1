@@ -25,9 +25,23 @@ const ContractDetail = () => {
   useEffect(() => { fetchContract(); }, [id]);
 
   const handleCancel = async () => {
+    // Determine refund eligibility for confirmation message
+    const rented = contract.Property?.RentalContracts?.some(rc => 
+      ['pending_payment', 'paid', 'active', 'completed'].includes(rc.trang_thai)
+    );
+    const today = new Date().toISOString().split('T')[0];
+    const expired = contract.ngay_het_han && new Date(contract.ngay_het_han) <= new Date(today);
+    
+    const isEligible = !rented && expired;
+    const message = isEligible 
+      ? "Ban chac chan muon huy? Hop dong nay da qua 6 thang chua co khach thue, ban SE DUOC HOAN LAI 1.000.000 VND vao tai khoan."
+      : "Ban chac chan muon huy? Hop dong nay chua du dieu kien (chua du 6 thang hoac da co khach), ban SE KHONG DUOC HOAN LAI 1.000.000 VND.";
+
+    if (!window.confirm(message)) return;
+
     try {
       await cancelDepositContract(id, { ghi_chu: 'Chu nha yeu cau cham dut hop dong' });
-      showNotification('Da gui yeu cau huy hop dong', 'success');
+      showNotification('Da huy hop dong thanh cong', 'success');
       fetchContract();
     } catch (error) {
       showNotification(error.response?.data?.message || 'Khong the huy hop dong', 'error');

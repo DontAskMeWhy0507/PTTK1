@@ -593,7 +593,13 @@ const StaffProperties = () => {
               const activeAppointments = appointments.filter((item) => ['pending', 'proposed', 'confirmed'].includes(item.trang_thai));
               return (
                 <button key={contract.id} className="property-card" style={{ textAlign: 'left', cursor: 'pointer', border: '1px solid #bee3f8' }} onClick={() => openHouseDashboard(contract)}>
-                  <div className="img" style={{ background: 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}><Home size={48} color="#3182ce" /></div>
+                  {contract.Property?.hinh_anh ? (
+                    <div className="img" style={{ padding: 0, overflow: 'hidden' }}>
+                      <img src={contract.Property.hinh_anh} alt={contract.Property.loai_nha} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ) : (
+                    <div className="img" style={{ background: 'linear-gradient(135deg, #ebf8ff, #bee3f8)' }}><Home size={48} color="#3182ce" /></div>
+                  )}
                   <div className="body">
                     <span className="badge badge-active" style={{ width: 'fit-content', marginBottom: 12 }}>Đang phụ trách</span>
                     <h3>{contract.Property?.loai_nha}</h3>
@@ -617,7 +623,13 @@ const StaffProperties = () => {
           <div className="property-grid">
             {availableHouses.map((house) => (
               <div key={house.id} className="property-card">
-                <div className="img"><Home size={48} /></div>
+                {house.hinh_anh ? (
+                  <div className="img" style={{ padding: 0, overflow: 'hidden' }}>
+                    <img src={house.hinh_anh} alt={house.loai_nha} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div className="img"><Home size={48} /></div>
+                )}
                 <div className="body">
                   <span className="badge badge-active" style={{ width: 'fit-content', marginBottom: 12 }}>Sẵn sàng</span>
                   <h3>{house.loai_nha}</h3>
