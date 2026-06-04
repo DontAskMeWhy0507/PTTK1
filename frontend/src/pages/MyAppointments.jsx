@@ -69,10 +69,10 @@ const MyAppointments = () => {
               <p style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: 8, color: '#4a5568' }}>
                 <User size={16} color="#38a169" /> <strong>{isDepositSurvey(a) ? 'Nhan vien phu trach:' : 'Moi gioi:'}</strong> {a.Broker?.full_name || 'Dang phan cong...'}
               </p>
-              {!isDepositSurvey(a) && a.Broker && (
+              {a.Broker && (
                 <div style={{ marginTop: 8, fontSize: 13, color: '#4a5568', lineHeight: 1.6 }}>
-                  <div>SDT moi gioi: <strong>{a.Broker.phone_number || 'Chua cap nhat'}</strong></div>
-                  <div>Email moi gioi: <strong>{a.Broker.email || 'Chua cap nhat'}</strong></div>
+                  <div>{isDepositSurvey(a) ? 'SDT nhan vien:' : 'SDT moi gioi:'} <strong>{a.Broker.phone_number || 'Chua cap nhat'}</strong></div>
+                  <div>{isDepositSurvey(a) ? 'Email nhan vien:' : 'Email moi gioi:'} <strong>{a.Broker.email || 'Chua cap nhat'}</strong></div>
                 </div>
               )}
             </div>

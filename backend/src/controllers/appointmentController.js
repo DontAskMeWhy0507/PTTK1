@@ -152,9 +152,25 @@ exports.updateAppointment = async (req, res) => {
     const patch = {};
     if (req.body.ngay_gio) {
       patch.ngay_gio = req.body.ngay_gio;
-      // Neu moi gioi cap nhat ngay gio, chuyen thanh proposed
-      if (isBroker && !req.body.trang_thai) patch.trang_thai = 'proposed';
-      if (isCustomer && !req.body.trang_thai) patch.trang_thai = 'pending';
+      if (!req.body.trang_thai) {
+        if (appointment.loai_lich_hen === 'deposit_survey') {
+          patch.trang_thai = ['staff', 'admin', 'broker'].includes(role) ? 'proposed' : 'pending';
+        } else {
+          patch.trang_thai = isBroker ? 'proposed' : 'pending';
+        }
+      }
+
+      if (!req.body.message) {
+        if (appointment.loai_lich_hen === 'deposit_survey') {
+          patch.last_message = ['staff', 'admin'].includes(role)
+            ? 'Nhan vien van phong de xuat lich khao sat moi.'
+            : 'Chu nha de xuat lich khao sat moi.';
+          patch.last_message_by = ['staff', 'admin'].includes(role) ? 'staff' : 'landlord';
+        } else {
+          patch.last_message = isBroker ? 'Moi gioi de xuat lich hen moi.' : 'Khach hang de xuat lich hen moi.';
+          patch.last_message_by = isBroker ? 'broker' : 'customer';
+        }
+      }
     }
 
     if (req.body.trang_thai) {

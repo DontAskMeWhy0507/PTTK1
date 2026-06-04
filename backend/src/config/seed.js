@@ -260,6 +260,17 @@ async function seed() {
       trang_thai: 'confirmed',
       last_message: 'Lich xem nha da duoc xac nhan vao ngay mai',
       last_message_by: 'broker'
+    },
+    {
+      khach_hang_id: landlord2.id,
+      nha_cho_thue_id: properties[1].id,
+      nhan_vien_id: staff.id,
+      ngay_gio: nextSurvey,
+      ghi_chu: 'Lich khao sat ky gui mau',
+      trang_thai: 'proposed',
+      loai_lich_hen: 'deposit_survey',
+      last_message: 'Nhan vien van phong de xuat lich khao sat nha ky gui.',
+      last_message_by: 'staff'
     }
   ]);
 

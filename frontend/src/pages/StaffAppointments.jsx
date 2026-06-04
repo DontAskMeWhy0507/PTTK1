@@ -10,6 +10,7 @@ const StaffAppointments = () => {
   const [selected, setSelected] = useState(null);
   const [msgInput, setMsgInput] = useState({});
   const [proposeDate, setProposeDate] = useState({});
+  const [surveyReschedule, setSurveyReschedule] = useState({});
   const { showNotification } = useUI();
   const { user } = useAuth();
   
@@ -32,6 +33,7 @@ const StaffAppointments = () => {
       await updateAppointment(id, patch);
       setMsgInput({ ...msgInput, [id]: '' });
       setProposeDate({ ...proposeDate, [id]: null });
+      setSurveyReschedule({ ...surveyReschedule, [id]: null });
       fetchAppointments();
       showNotification('Da cap nhat thong tin lich hen', 'success');
     } catch (e) {
@@ -93,11 +95,11 @@ const StaffAppointments = () => {
     cancelled: { label: 'Da huy', color: '#a0aec0' }
   };
   const visibleAppointments = appointments.filter((appointment) => {
-    if (appointment.loai_lich_hen === 'deposit_survey' && ['completed', 'cancelled', 'no_show'].includes(appointment.trang_thai)) {
-      return false;
+    if (appointment.loai_lich_hen === 'deposit_survey') {
+      return user?.role !== 'staff' && !['completed', 'cancelled', 'no_show'].includes(appointment.trang_thai);
     }
-    if (user?.role === 'broker') return appointment.loai_lich_hen !== 'deposit_survey';
-    if (user?.role === 'staff') return appointment.loai_lich_hen === 'deposit_survey';
+    if (user?.role === 'broker') return true;
+    if (user?.role === 'staff') return false;
     return true;
   });
   const isDepositSurvey = (appointment) => appointment.loai_lich_hen === 'deposit_survey';
@@ -106,6 +108,11 @@ const StaffAppointments = () => {
   return (
     <div>
       <div className="topbar"><h1>{user?.role === 'staff' ? 'Quan ly lich hen khao sat' : 'Quan ly lich hen xem nha'}</h1></div>
+      {user?.role === 'staff' && (
+        <div style={{ marginBottom: 20, padding: 16, background: '#ebf8ff', border: '1px solid #bee3f8', borderRadius: 16, color: '#2c5282' }}>
+          Lich hen khao sat da duoc dong bo trong Dashboard ky gui. Trang nay hien khong con xu ly lich khao sat rieng.
+        </div>
+      )}
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 24 }}>
         {visibleAppointments.map((a) => (
@@ -144,7 +151,7 @@ const StaffAppointments = () => {
               {a.trang_thai === 'confirmed' && (
                 isDepositSurvey(a) ? (
                   <div style={{ padding: 12, background: '#f0fff4', borderRadius: 12, color: '#2f855a', fontSize: 13, fontWeight: 600 }}>
-                    Lịch khảo sát đã chốt. Sau khi gặp chủ nhà, cập nhật hiện trạng trong dashboard ký gửi.
+                    Lịch khảo sát đã chốt. Chủ nhà và nhân viên văn phòng sẽ thấy cập nhật ngay trong Dashboard ký gửi.
                   </div>
                 ) : ['broker', 'admin'].includes(user?.role) && (
                   <button className="btn btn-primary" style={{ justifyContent: 'center', height: 48 }} onClick={() => openWorkPanel(a)}>
@@ -153,7 +160,27 @@ const StaffAppointments = () => {
                 )
               )}
 
-              {['pending', 'proposed', 'rejected'].includes(a.trang_thai) && (
+              {isDepositSurvey(a) && ['staff', 'admin'].includes(user?.role) && ['pending', 'proposed', 'rejected'].includes(a.trang_thai) && (
+                <>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-success" style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleAction(a.id, { trang_thai: 'confirmed', message: 'Nhan vien van phong xac nhan lich khao sat.' })}>
+                      <Check size={16} /> Chấp nhận
+                    </button>
+                    <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setSurveyReschedule({ ...surveyReschedule, [a.id]: a.ngay_gio ? new Date(a.ngay_gio).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16) })}>
+                      <Calendar size={16} /> Đổi lịch
+                    </button>
+                  </div>
+                  {surveyReschedule[a.id] && (
+                    <div style={{ display: 'flex', gap: 8, padding: 12, background: '#ebf8ff', borderRadius: 12 }}>
+                      <input type="datetime-local" value={surveyReschedule[a.id]} onChange={(e) => setSurveyReschedule({ ...surveyReschedule, [a.id]: e.target.value })} style={{ flex: 1 }} />
+                      <button className="btn btn-primary" onClick={() => handleAction(a.id, { ngay_gio: surveyReschedule[a.id], trang_thai: 'proposed', message: 'Nhan vien van phong de xuat lich khao sat moi.' })}>Lưu</button>
+                      <button className="btn" onClick={() => setSurveyReschedule({ ...surveyReschedule, [a.id]: null })}>Hủy</button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!isDepositSurvey(a) && ['pending', 'proposed', 'rejected'].includes(a.trang_thai) && (
                 <>
                   {['pending', 'rejected'].includes(a.trang_thai) ? (
                     <button className="btn btn-primary" style={{ justifyContent: 'center', height: '48px' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date().toISOString().slice(0, 16)})}>

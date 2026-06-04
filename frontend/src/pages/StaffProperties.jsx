@@ -68,6 +68,7 @@ const StaffProperties = () => {
   const [legalStatus, setLegalStatus] = useState('pending');
   const [legalNote, setLegalNote] = useState('');
   const [interactionText, setInteractionText] = useState('');
+  const [surveyReschedule, setSurveyReschedule] = useState({});
   const [contractForm, setContractForm] = useState({
     gia_tri_hop_dong: '',
     phan_tram_hoa_hong: 5,
@@ -261,6 +262,7 @@ const StaffProperties = () => {
             {appointments.map((appointment) => {
               const canConfirm = appointment.loai_lich_hen === 'property_viewing' && ['pending', 'proposed', 'rejected'].includes(appointment.trang_thai);
               const canWork = appointment.loai_lich_hen === 'property_viewing' && ['confirmed', 'completed'].includes(appointment.trang_thai);
+              const canHandleSurvey = appointment.loai_lich_hen === 'deposit_survey' && ['staff', 'admin'].includes(user?.role) && ['pending', 'proposed', 'rejected'].includes(appointment.trang_thai);
               return (
                 <tr key={appointment.id}>
                   <td>{appointmentTypeLabel[appointment.loai_lich_hen] || appointment.loai_lich_hen}</td>
@@ -268,10 +270,35 @@ const StaffProperties = () => {
                     <div style={{ fontWeight: 700 }}>{appointment.User?.full_name || '---'}</div>
                     <div style={{ fontSize: 12, color: '#718096' }}>{appointment.User?.phone_number || appointment.User?.email || ''}</div>
                   </td>
-                  <td>{appointment.Broker?.full_name || 'Chưa phân công'}</td>
+                  <td className="wrap">
+                    <div>{appointment.Broker?.full_name || 'Chưa phân công'}</div>
+                    {appointment.Broker && (
+                      <div style={{ fontSize: 12, color: '#718096' }}>
+                        {appointment.Broker.phone_number || ''} {appointment.Broker.email ? `| ${appointment.Broker.email}` : ''}
+                      </div>
+                    )}
+                  </td>
                   <td>{formatDateTime(appointment.ngay_gio)}</td>
                   <td><span className="badge badge-pending">{appointmentStatusLabel[appointment.trang_thai] || appointment.trang_thai}</span></td>
                   <td>
+                    {canHandleSurvey && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <button className="btn btn-success btn-sm" onClick={() => handleAction(appointment.id, { trang_thai: 'confirmed', message: 'Nhan vien van phong xac nhan lich khao sat.' })}>
+                          <Check size={16} /> Chấp nhận
+                        </button>
+                        {surveyReschedule[appointment.id] ? (
+                          <div style={{ display: 'flex', gap: 8, padding: 12, background: '#ebf8ff', borderRadius: 12 }}>
+                            <input type="datetime-local" value={surveyReschedule[appointment.id]} onChange={(e) => setSurveyReschedule({ ...surveyReschedule, [appointment.id]: e.target.value })} style={{ flex: 1 }} />
+                            <button className="btn btn-primary" onClick={() => handleAction(appointment.id, { ngay_gio: surveyReschedule[appointment.id], trang_thai: 'proposed', message: 'Nhan vien van phong de xuat lich khao sat moi.' })}>Lưu</button>
+                            <button className="btn" onClick={() => setSurveyReschedule({ ...surveyReschedule, [appointment.id]: null })}>Hủy</button>
+                          </div>
+                        ) : (
+                          <button className="btn btn-primary btn-sm" onClick={() => setSurveyReschedule({ ...surveyReschedule, [appointment.id]: appointment.ngay_gio ? new Date(appointment.ngay_gio).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16) })}>
+                            <Calendar size={16} /> Đổi lịch
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {canConfirm && (
                       <button className="btn btn-success btn-sm" onClick={() => confirmViewingAppointment(appointment)}>
                         <Check size={16} /> Chốt lịch
