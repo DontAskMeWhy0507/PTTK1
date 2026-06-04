@@ -88,7 +88,10 @@ exports.getAllProperties = async (req, res) => {
       if (maxArea) where.dien_tich[Op.lte] = Number(maxArea);
     }
 
-    const properties = await Property.findAll({ where });
+    const properties = await Property.findAll({
+      where,
+      include: [{ model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }]
+    });
     res.json({ success: true, data: properties.map((property) => serializeProperty(property, canViewDetails(viewer))) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -102,7 +105,8 @@ exports.getPropertyById = async (req, res) => {
       where: {
         id: req.params.id,
         hien_thi_chi_tiet: true
-      }
+      },
+      include: [{ model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }]
     });
 
     if (!property) {

@@ -23,7 +23,9 @@ const TransactionLog = sequelize.define('TransactionLog', {
       'commission_earned',
       'deposit_deduction',
       'deposit_refund',
-      'rental_contract_created'
+      'rental_contract_created',
+      'landlord_payout',
+      'broker_payout'
     ),
     allowNull: false
   },

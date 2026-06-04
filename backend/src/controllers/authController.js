@@ -7,6 +7,10 @@ const publicUser = (user) => ({
   email: user.email,
   full_name: user.full_name,
   phone_number: user.phone_number,
+  bank_name: user.bank_name,
+  bank_account_number: user.bank_account_number,
+  bank_account_holder: user.bank_account_holder,
+  account_balance: Number(user.account_balance || 0),
   role: user.role,
   status: user.status,
   is_member: !!user.is_member
@@ -14,7 +18,7 @@ const publicUser = (user) => ({
 
 exports.register = async (req, res) => {
   try {
-    const { email, password, full_name, phone_number, role } = req.body;
+    const { email, password, full_name, phone_number, role, bank_name, bank_account_number, bank_account_holder } = req.body;
     if (!email || !password || !full_name) {
       return res.status(400).json({ success: false, message: 'Vui long nhap day du ho ten, email va mat khau' });
     }
@@ -34,11 +38,18 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Chu nha can cung cap so dien thoai lien he' });
     }
 
+    if (['landlord', 'broker'].includes(finalRole) && (!bank_name || !bank_account_number || !bank_account_holder)) {
+      return res.status(400).json({ success: false, message: 'Chu nha va moi gioi can cung cap day du thong tin tai khoan ngan hang' });
+    }
+
     const user = await User.create({
       email,
       password_hash,
       full_name,
       phone_number,
+      bank_name,
+      bank_account_number,
+      bank_account_holder,
       role: finalRole,
       is_member: true
     });
@@ -69,6 +80,10 @@ exports.login = async (req, res) => {
           role: user.role,
           full_name: user.full_name,
           phone_number: user.phone_number,
+          bank_name: user.bank_name,
+          bank_account_number: user.bank_account_number,
+          bank_account_holder: user.bank_account_holder,
+          account_balance: Number(user.account_balance || 0),
           is_member: !!user.is_member
         },
       process.env.JWT_SECRET,
@@ -88,7 +103,7 @@ exports.getUsers = async (req, res) => {
     }
 
     const users = await User.findAll({
-      attributes: ['id', 'email', 'full_name', 'phone_number', 'role', 'status', 'is_member', 'created_at', 'updated_at'],
+      attributes: ['id', 'email', 'full_name', 'phone_number', 'bank_name', 'bank_account_number', 'bank_account_holder', 'account_balance', 'role', 'status', 'is_member', 'created_at', 'updated_at'],
       order: [['created_at', 'DESC']]
     });
 
@@ -107,12 +122,16 @@ exports.adminUpdateUser = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'Khong thay nguoi dung' });
 
-    const { email, password, full_name, phone_number, role, status, is_member } = req.body;
+    const { email, password, full_name, phone_number, bank_name, bank_account_number, bank_account_holder, account_balance, role, status, is_member } = req.body;
     
     const patch = {};
     if (email) patch.email = email;
     if (full_name) patch.full_name = full_name;
     if (phone_number) patch.phone_number = phone_number;
+    if (bank_name !== undefined) patch.bank_name = bank_name || null;
+    if (bank_account_number !== undefined) patch.bank_account_number = bank_account_number || null;
+    if (bank_account_holder !== undefined) patch.bank_account_holder = bank_account_holder || null;
+    if (account_balance !== undefined) patch.account_balance = account_balance;
     if (role) patch.role = role;
     if (status) patch.status = status;
     if (is_member !== undefined) patch.is_member = is_member;

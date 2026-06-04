@@ -93,6 +93,9 @@ const StaffAppointments = () => {
     cancelled: { label: 'Da huy', color: '#a0aec0' }
   };
   const visibleAppointments = appointments.filter((appointment) => {
+    if (appointment.loai_lich_hen === 'deposit_survey' && ['completed', 'cancelled', 'no_show'].includes(appointment.trang_thai)) {
+      return false;
+    }
     if (user?.role === 'broker') return appointment.loai_lich_hen !== 'deposit_survey';
     if (user?.role === 'staff') return appointment.loai_lich_hen === 'deposit_survey';
     return true;
@@ -138,24 +141,24 @@ const StaffAppointments = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
-              {['pending', 'proposed', 'rejected', 'confirmed'].includes(a.trang_thai) && (
+              {a.trang_thai === 'confirmed' && (
+                isDepositSurvey(a) ? (
+                  <div style={{ padding: 12, background: '#f0fff4', borderRadius: 12, color: '#2f855a', fontSize: 13, fontWeight: 600 }}>
+                    Lịch khảo sát đã chốt. Sau khi gặp chủ nhà, cập nhật hiện trạng trong dashboard ký gửi.
+                  </div>
+                ) : ['broker', 'admin'].includes(user?.role) && (
+                  <button className="btn btn-primary" style={{ justifyContent: 'center', height: 48 }} onClick={() => openWorkPanel(a)}>
+                    Làm việc / Lập hợp đồng
+                  </button>
+                )
+              )}
+
+              {['pending', 'proposed', 'rejected'].includes(a.trang_thai) && (
                 <>
                   {['pending', 'rejected'].includes(a.trang_thai) ? (
                     <button className="btn btn-primary" style={{ justifyContent: 'center', height: '48px' }} onClick={() => setProposeDate({...proposeDate, [a.id]: new Date().toISOString().slice(0, 16)})}>
                       <Calendar size={18} /> {a.ngay_gio ? `Gui lai lich hen cho ${participantLabel(a).toLowerCase()}` : `Gui lich hen cho ${participantLabel(a).toLowerCase()}`}
                     </button>
-                  ) : a.trang_thai === 'confirmed' ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {isDepositSurvey(a) ? (
-                        <div style={{ padding: 12, background: '#f0fff4', borderRadius: 12, color: '#2f855a', fontSize: 13, fontWeight: 600, flex: 1 }}>
-                          Lich khao sat da chot. Sau khi gap, cap nhat hien trang tai man Quan ly ky gui.
-                        </div>
-                      ) : ['broker', 'admin'].includes(user?.role) && (
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => openWorkPanel(a)}>
-                          Lam viec / Lap hop dong
-                        </button>
-                      )}
-                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ padding: 12, background: '#ebf8ff', borderRadius: 12, color: '#2c5282', fontSize: 13, fontWeight: 600 }}>

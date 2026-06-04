@@ -8,7 +8,8 @@ const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [newUser, setNewUser] = useState({ full_name: '', email: '', password: '', phone_number: '', role: 'customer' });
+  const emptyUser = { full_name: '', email: '', password: '', phone_number: '', role: 'customer', bank_name: '', bank_account_number: '', bank_account_holder: '' };
+  const [newUser, setNewUser] = useState(emptyUser);
   const [showAdd, setShowAdd] = useState(false);
   const { showNotification } = useUI();
 
@@ -22,7 +23,7 @@ const AdminUsers = () => {
     e.preventDefault();
     try {
       await register(newUser);
-      setNewUser({ full_name: '', email: '', password: '', phone_number: '', role: 'customer' });
+      setNewUser(emptyUser);
       setShowAdd(false);
       loadUsers();
       showNotification('Da tao tai khoan moi thanh cong', 'success');
@@ -115,12 +116,24 @@ const AdminUsers = () => {
                   <option value="admin">Quan tri vien</option>
                 </select>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '24px' }}>
-                <button type="submit" className="btn btn-primary" style={{ height: '52px', width: '100%' }}>
-                  Xac nhan tao tai khoan
-                </button>
+              <div className="form-group">
+                <label>Ngan hang</label>
+                <input value={newUser.bank_name} onChange={(e) => setNewUser({ ...newUser, bank_name: e.target.value })} placeholder="Bat buoc voi chu nha/moi gioi" />
               </div>
             </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>So tai khoan</label>
+                <input value={newUser.bank_account_number} onChange={(e) => setNewUser({ ...newUser, bank_account_number: e.target.value })} placeholder="So tai khoan ngan hang" />
+              </div>
+              <div className="form-group">
+                <label>Chu tai khoan</label>
+                <input value={newUser.bank_account_holder} onChange={(e) => setNewUser({ ...newUser, bank_account_holder: e.target.value })} placeholder="Ten chu tai khoan" />
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ height: '52px', width: '100%' }}>
+              Xac nhan tao tai khoan
+            </button>
           </form>
         </div>
       )}
@@ -131,9 +144,10 @@ const AdminUsers = () => {
             <tr>
               <th style={{ width: '25%' }}>Thong tin ca nhan</th>
               <th style={{ width: '20%' }}>Tai khoan & Bao mat</th>
-              <th style={{ width: '15%' }}>Vai tro</th>
-              <th style={{ width: '15%' }}>Trang thai</th>
-              <th style={{ width: '25%' }}>Hanh dong</th>
+              <th style={{ width: '20%' }}>Tai khoan ngan hang</th>
+              <th style={{ width: '12%' }}>Vai tro</th>
+              <th style={{ width: '12%' }}>Trang thai</th>
+              <th style={{ width: '16%' }}>Hanh dong</th>
             </tr>
           </thead>
           <tbody>
@@ -163,6 +177,24 @@ const AdminUsers = () => {
                   </div>
                   {editingId === user.id && (
                     <input type="password" placeholder="Doi mat khau..." value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} style={{ marginTop: 8 }} />
+                  )}
+                </td>
+                <td>
+                  {editingId === user.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input value={editForm.bank_name || ''} onChange={(e) => setEditForm({ ...editForm, bank_name: e.target.value })} placeholder="Ngan hang" />
+                      <input value={editForm.bank_account_number || ''} onChange={(e) => setEditForm({ ...editForm, bank_account_number: e.target.value })} placeholder="So tai khoan" />
+                      <input value={editForm.bank_account_holder || ''} onChange={(e) => setEditForm({ ...editForm, bank_account_holder: e.target.value })} placeholder="Chu tai khoan" />
+                    </div>
+                  ) : (
+                    <div className="wrap">
+                      <div style={{ fontWeight: 700 }}>{user.bank_name || 'Chua co ngan hang'}</div>
+                      <div style={{ fontSize: 12, color: '#718096' }}>{user.bank_account_number || 'Chua co STK'}</div>
+                      <div style={{ fontSize: 12, color: '#718096' }}>{user.bank_account_holder || ''}</div>
+                      <div style={{ fontSize: 12, color: '#2f855a', fontWeight: 700, marginTop: 4 }}>
+                        So du: {Number(user.account_balance || 0).toLocaleString('vi-VN')}d
+                      </div>
+                    </div>
                   )}
                 </td>
                 <td>

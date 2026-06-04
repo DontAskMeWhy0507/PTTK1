@@ -16,6 +16,7 @@ const PropertyDetail = () => {
   const { user } = useAuth();
   const { showNotification } = useUI();
   const navigate = useNavigate();
+  const brokerContact = activeAppt?.Broker || property?.Broker;
 
   useEffect(() => {
     getPropertyDetail(id)
@@ -42,7 +43,7 @@ const PropertyDetail = () => {
       return;
     }
 
-    if (user?.id === property.chu_nha_id) {
+    if (user?.id && property.chu_nha_id && user.id === property.chu_nha_id) {
       showNotification('Ban khong the dat lich xem chinh nha minh dang', 'error');
       return;
     }
@@ -108,6 +109,14 @@ const PropertyDetail = () => {
                 Ban dang xem ban tom tat. Dang nhap tai khoan khach hang de mo khoa dia chi chinh xac va thong tin lien he.
               </div>
             )}
+            {property.thong_tin_day_du && brokerContact && (
+              <div style={{ marginTop: 24, padding: 16, background: '#f0fff4', borderRadius: 12, border: '1px solid #c6f6d5', color: '#22543d', fontSize: 14 }}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>Moi gioi phu trach</div>
+                <div>Ho ten: <strong>{brokerContact.full_name || 'Dang cap nhat'}</strong></div>
+                <div>So dien thoai: <strong>{brokerContact.phone_number || 'Chua cap nhat'}</strong></div>
+                <div>Email: <strong>{brokerContact.email || 'Chua cap nhat'}</strong></div>
+              </div>
+            )}
           </div>
 
           <div className="stat-card" style={{ maxWidth: '100%' }}>
@@ -120,7 +129,7 @@ const PropertyDetail = () => {
                 <p style={{ color: '#4a5568', fontWeight: 600 }}>Tai khoan cua ban ({user?.role}) khong co quyen dat lich xem nha.</p>
                 <p style={{ color: '#718096', fontSize: '14px', marginTop: 8 }}>Chuc nang nay chi danh rieng cho Thanh vien (Khach hang).</p>
               </div>
-            ) : user?.id === property.chu_nha_id ? (
+            ) : user?.id && property.chu_nha_id && user.id === property.chu_nha_id ? (
               <div style={{ padding: '24px', background: '#ebf8ff', borderRadius: '16px', textAlign: 'center', border: '1px solid #bee3f8' }}>
                 <p style={{ color: '#2c5282', fontWeight: 600 }}>Day la bat dong san cua chinh ban.</p>
                 <p style={{ color: '#3182ce', fontSize: '14px', marginTop: 8 }}>Ban khong the tu dat lich xem nha minh dang ky gui.</p>
@@ -131,6 +140,12 @@ const PropertyDetail = () => {
                 <div style={{ margin: '12px 0', padding: '12px', background: '#fff', borderRadius: '12px', border: '1px solid #c6f6d5' }}>
                    <p style={{ fontSize: '13px', color: '#718096' }}>Moi gioi phu trach:</p>
                    <p style={{ fontWeight: 700, color: '#2f855a' }}>{activeAppt.Broker?.full_name || 'Dang tim...'}</p>
+                   {activeAppt.Broker && (
+                    <div style={{ marginTop: 8, fontSize: 13, color: '#4a5568' }}>
+                      <div>SDT: <strong>{activeAppt.Broker.phone_number || 'Chua cap nhat'}</strong></div>
+                      <div>Email: <strong>{activeAppt.Broker.email || 'Chua cap nhat'}</strong></div>
+                    </div>
+                   )}
                 </div>
                 <p style={{ color: '#2f855a', fontSize: '14px' }}>Vui long theo doi tai muc <strong>"Lich hen xem nha"</strong> de biet thong tin xac nhan.</p>
               </div>

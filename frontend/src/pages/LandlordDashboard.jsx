@@ -1,15 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { cancelDepositContract, customerPayDeposit } from '../api';
 
 import { useUI } from '../contexts/UIContext';
 import { LayoutDashboard, PlusCircle, Home, CheckCircle, Clock, AlertTriangle, X } from 'lucide-react';
 
+const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
+
+const getReceivedAmount = (contract) => {
+  const rentals = contract.Property?.RentalContracts || [];
+  return rentals.reduce((sum, rental) => {
+    if (!['active', 'completed', 'paid'].includes(rental.trang_thai)) return sum;
+    const contractValue = Math.round(Number(rental.gia_tri_hop_dong || 0));
+    const commission = Math.round(Number(rental.tien_hoa_hong || 0));
+    const depositDeduction = Math.min(Math.round(Number(contract.tien_dam_bao || 0)), commission);
+    return sum + Math.max(contractValue - (commission - depositDeduction), 0);
+  }, 0);
+};
+
 const LandlordDashboard = () => {
   const [contracts, setContracts] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, expiringSoon: 0, refundPending: 0 });
   const [paymentModal, setPaymentModal] = useState(null);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
+  const payingRef = useRef(false);
   const { showNotification, showConfirm } = useUI();
   const navigate = useNavigate();
 
@@ -28,7 +42,8 @@ const LandlordDashboard = () => {
         total: data.length,
         active: data.filter((c) => c.trang_thai === 'active').length,
         expiringSoon: expSoon.length,
-        refundPending: data.filter((c) => c.Refunds?.some((r) => r.trang_thai === 'pending')).length
+        refundPending: data.filter((c) => c.Refunds?.some((r) => r.trang_thai === 'pending')).length,
+        received: data.reduce((sum, contract) => sum + getReceivedAmount(contract), 0)
       });
     } catch (err) {
       console.error('Loi tai hop dong:', err);
@@ -40,7 +55,8 @@ const LandlordDashboard = () => {
   useEffect(() => {
     let timer;
     if (paymentModal) {
-      setCountdown(10);
+      payingRef.current = false;
+      setCountdown(5);
       timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
@@ -76,6 +92,8 @@ const LandlordDashboard = () => {
   };
 
   const executePayment = async (id) => {
+    if (payingRef.current) return;
+    payingRef.current = true;
     try {
       await customerPayDeposit(id);
       showNotification('Thanh toan tien dam bao thanh cong!', 'success');
@@ -84,6 +102,8 @@ const LandlordDashboard = () => {
     } catch (error) {
       showNotification(error.response?.data?.message || 'Co loi xay ra khi xac nhan', 'error');
       setPaymentModal(null);
+    } finally {
+      payingRef.current = false;
     }
   };
 
@@ -155,6 +175,10 @@ const LandlordDashboard = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Yeu cau hoan tien</span><AlertTriangle size={20} color="#e53e3e" /></div>
           <div className="value">{stats.refundPending}</div>
         </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="label">Tien da nhan</span><LayoutDashboard size={20} color="#2c5282" /></div>
+          <div className="value" style={{ color: '#2c5282' }}>{formatMoney(stats.received)}</div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -167,6 +191,7 @@ const LandlordDashboard = () => {
           <thead>
             <tr>
               <th style={{ width: '30%' }}>Bat dong san</th>
+              <th>Tien da nhan</th>
               <th>Ngay ky</th>
               <th>Han 6 thang</th>
               <th>Trang thai</th>
@@ -175,7 +200,7 @@ const LandlordDashboard = () => {
           </thead>
           <tbody>
             {contracts.length === 0 && (
-              <tr><td colSpan="5" style={{ textAlign: 'center', padding: 60, color: '#718096' }}>Ban chua co bat dong san nao ky gui.</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: 60, color: '#718096' }}>Ban chua co bat dong san nao ky gui.</td></tr>
             )}
             {contracts.map((c) => (
               <tr key={c.id}>
@@ -184,6 +209,12 @@ const LandlordDashboard = () => {
                   <div style={{ fontSize: '13px', color: '#718096' }}>{c.Property?.dia_chi_chi_tiet || 'Dang cap nhat...'}</div>
                   <div style={{ fontSize: '12px', color: '#718096', marginTop: 4 }}>
                     Khao sat: {c.lich_khao_sat ? new Date(c.lich_khao_sat).toLocaleString('vi-VN') : 'Chua hen'} | Phap ly: {legalStatusMap[c.trang_thai_phap_ly] || 'Cho kiem tra'}
+                  </div>
+                </td>
+                <td style={{ fontWeight: 800, color: getReceivedAmount(c) > 0 ? '#2c5282' : '#718096' }}>
+                  {formatMoney(getReceivedAmount(c))}
+                  <div style={{ fontSize: 12, color: '#718096', fontWeight: 500, marginTop: 4 }}>
+                    Đảm bảo đã nộp: {formatMoney(c.tien_dam_bao)}
                   </div>
                 </td>
                 <td>{c.ngay_ky || '---'}</td>

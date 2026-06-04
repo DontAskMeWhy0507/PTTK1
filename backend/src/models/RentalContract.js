@@ -26,7 +26,7 @@ const RentalContract = sequelize.define('RentalContract', {
   hooks: {
     beforeSave: (contract) => {
       if (contract.gia_tri_hop_dong && contract.phan_tram_hoa_hong) {
-        contract.tien_hoa_hong = (contract.gia_tri_hop_dong * contract.phan_tram_hoa_hong) / 100;
+        contract.tien_hoa_hong = Math.round((Number(contract.gia_tri_hop_dong) * Number(contract.phan_tram_hoa_hong)) / 100);
       }
     }
   }

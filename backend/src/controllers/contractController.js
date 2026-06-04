@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Appointment, ContractDocument, DepositContract, Property, Refund, RentalContract, TransactionLog, User } = require('../models');
+const { Appointment, Commission, ContractDocument, DepositContract, Interaction, Property, Refund, RentalContract, TransactionLog, User } = require('../models');
 const { logTransaction } = require('../utils/transactionLog');
 
 const documentAttributes = [
@@ -85,7 +85,31 @@ exports.getMyDepositContracts = async (req, res) => {
           model: Property,
           include: [
             { model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] },
-            { model: Appointment, required: false, where: { loai_lich_hen: 'deposit_survey' } }
+            {
+              model: Appointment,
+              required: false,
+              include: [
+                { model: User, attributes: ['id', 'full_name', 'phone_number', 'email', 'role'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }
+              ]
+            },
+            {
+              model: Interaction,
+              required: false,
+              include: [
+                { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }
+              ]
+            },
+            {
+              model: RentalContract,
+              required: false,
+              include: [
+                { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: Commission, required: false }
+              ]
+            }
           ]
         },
         { model: Refund }
@@ -107,7 +131,31 @@ exports.getDepositContractDetail = async (req, res) => {
           model: Property,
           include: [
             { model: User, as: 'Landlord', attributes: ['id', 'full_name', 'email', 'phone_number'] },
-            { model: Appointment, required: false, where: { loai_lich_hen: 'deposit_survey' } }
+            {
+              model: Appointment,
+              required: false,
+              include: [
+                { model: User, attributes: ['id', 'full_name', 'phone_number', 'email', 'role'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }
+              ]
+            },
+            {
+              model: Interaction,
+              required: false,
+              include: [
+                { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] }
+              ]
+            },
+            {
+              model: RentalContract,
+              required: false,
+              include: [
+                { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+                { model: Commission, required: false }
+              ]
+            }
           ]
         },
         { model: Refund }
@@ -207,8 +255,8 @@ exports.getMyRentalContracts = async (req, res) => {
       where,
       include: [
         { model: Property },
-        { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number'] },
-        { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number'] }
+        { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+        { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] }
       ],
       order: [['created_at', 'DESC']]
     });
@@ -224,8 +272,8 @@ exports.getRentalContractDetail = async (req, res) => {
     const contract = await RentalContract.findByPk(req.params.id, {
       include: [
         { model: Property },
-        { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number'] },
-        { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number'] }
+        { model: User, as: 'Broker', attributes: ['id', 'full_name', 'phone_number', 'email'] },
+        { model: User, as: 'Customer', attributes: ['id', 'full_name', 'phone_number', 'email'] }
       ]
     });
 

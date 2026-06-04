@@ -24,6 +24,19 @@ const User = sequelize.define('User', {
   phone_number: {
     type: DataTypes.STRING
   },
+  bank_name: {
+    type: DataTypes.STRING
+  },
+  bank_account_number: {
+    type: DataTypes.STRING
+  },
+  bank_account_holder: {
+    type: DataTypes.STRING
+  },
+  account_balance: {
+    type: DataTypes.DECIMAL(15, 2),
+    defaultValue: 0
+  },
   role: {
     type: DataTypes.ENUM('landlord', 'customer', 'staff', 'broker', 'admin'),
     defaultValue: 'customer'

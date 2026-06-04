@@ -139,7 +139,7 @@ const PropertyList = () => {
 
       <div className="property-grid">
         {properties.map((p) => {
-          const isOwner = user?.id === p.chu_nha_id;
+          const isOwner = Boolean(user?.id && p.chu_nha_id && user.id === p.chu_nha_id);
           const appt = myAppointments.find(a => a.nha_cho_thue_id === p.id && ['pending', 'proposed', 'confirmed'].includes(a.trang_thai));
           const hasAppt = !!appt;
           
@@ -158,6 +158,13 @@ const PropertyList = () => {
                   </span>
                 )}
               </div>
+              {hasAppt && appt.Broker && (
+                <div style={{ padding: '10px 12px', background: '#f0fff4', borderRadius: 10, color: '#22543d', fontSize: 12, marginBottom: 12, lineHeight: 1.5 }}>
+                  <div>Moi gioi: <strong>{appt.Broker.full_name}</strong></div>
+                  <div>SDT: <strong>{appt.Broker.phone_number || 'Chua cap nhat'}</strong></div>
+                  <div>Email: <strong>{appt.Broker.email || 'Chua cap nhat'}</strong></div>
+                </div>
+              )}
               <h3 style={{ fontSize: '18px', color: '#1a202c', marginBottom: 8 }}>{p.loai_nha} - {p.dien_tich}m²</h3>
               <p className="address" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '14px', color: '#718096', marginBottom: 16 }}>
                 <MapPin size={16} /> {p.dia_chi_chi_tiet}

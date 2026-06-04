@@ -1,4 +1,4 @@
-const { Appointment, Commission, ContractDocument, DepositContract, Interaction, Property, RentalContract, User } = require('../models');
+const { Appointment, Commission, ContractDocument, DepositContract, Interaction, Property, RentalContract, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { logTransaction } = require('../utils/transactionLog');
 
@@ -10,6 +10,9 @@ const ensureStaffOrBroker = (req, res) => {
 
   return true;
 };
+
+const hasBankAccount = (user) => Boolean(user?.bank_name && user?.bank_account_number && user?.bank_account_holder);
+const roundMoney = (value) => Math.round(Number(value || 0));
 
 exports.getAppointments = async (req, res) => {
   if (!ensureStaffOrBroker(req, res)) return;
@@ -45,6 +48,10 @@ exports.updateAppointmentStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không thấy lịch hẹn' });
     }
 
+    if (['confirmed', 'completed', 'cancelled', 'no_show'].includes(appointment.trang_thai)) {
+      return res.status(400).json({ success: false, message: 'Lich hen da dong, khong the tiep tuc tuong tac' });
+    }
+
     const patch = {
       trang_thai: req.body.trang_thai || appointment.trang_thai,
       nhan_vien_id: appointment.nhan_vien_id || req.user.id
@@ -69,13 +76,13 @@ exports.getCommissions = async (req, res) => {
 
   try {
     const commissions = await Commission.findAll({
-      where: { nhan_vien_id: req.user.id },
+      where: { nhan_vien_id: req.user.id, loai: 'commission' },
       order: [['created_at', 'DESC']]
     });
 
     const total = commissions.reduce((sum, item) => {
       const amount = Number(item.so_tien || 0);
-      return item.loai === 'deduction' ? sum - amount : sum + amount;
+      return item.loai === 'commission' && ['earned', 'paid'].includes(item.trang_thai) ? sum + amount : sum;
     }, 0);
 
     res.json({ success: true, data: commissions, total_earned: total });
@@ -203,88 +210,41 @@ exports.createRentalContract = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Lich xem nha chua co moi gioi phu trach' });
     }
 
-    const contract = await RentalContract.create({
-      khach_hang_id,
-      nha_cho_thue_id,
-      nhan_vien_id: brokerId,
-      gia_tri_hop_dong,
-      phan_tram_hoa_hong: phan_tram_hoa_hong || 3,
-      ngay_ky: new Date().toISOString().split('T')[0],
-      ngay_bat_dau,
-      ngay_ket_thuc,
-      trang_thai: 'pending_payment' // Moi gioi lap xong thi cho khach thanh toan
-    });
+    const contract = await sequelize.transaction(async (transaction) => {
+      const createdContract = await RentalContract.create({
+        khach_hang_id,
+        nha_cho_thue_id,
+        nhan_vien_id: brokerId,
+        gia_tri_hop_dong,
+        phan_tram_hoa_hong: phan_tram_hoa_hong || 3,
+        ngay_ky: new Date().toISOString().split('T')[0],
+        ngay_bat_dau,
+        ngay_ket_thuc,
+        trang_thai: 'pending_payment'
+      }, { transaction });
 
-    const depositContract = await DepositContract.findOne({
-      where: { nha_cho_thue_id, trang_thai: 'active' }
-    });
-    const depositDeduction = depositContract ? Number(depositContract.tien_dam_bao || 0) : 0;
-    const commissionAmount = Number(contract.tien_hoa_hong || 0);
+      const commissionAmount = roundMoney(createdContract.tien_hoa_hong);
 
-    await Commission.create({
-      nhan_vien_id: brokerId,
-      hop_dong_thue_id: contract.id,
-      so_tien: commissionAmount,
-      loai: 'commission',
-      trang_thai: 'pending'
-    });
-
-    await logTransaction({
-      user_id: khach_hang_id,
-      actor_id: req.user.id,
-      loai_giao_dich: 'rental_contract_created',
-      so_tien: gia_tri_hop_dong,
-      doi_tuong: 'rental_contract',
-      doi_tuong_id: contract.id,
-      mo_ta: 'Moi gioi tao hop dong thue, cho khach thue thanh toan'
-    });
-
-    await logTransaction({
-      user_id: brokerId,
-      actor_id: req.user.id,
-      loai_giao_dich: 'commission_pending',
-      so_tien: commissionAmount,
-      doi_tuong: 'rental_contract',
-      doi_tuong_id: contract.id,
-      mo_ta: 'Hoa hong moi gioi dang cho khach thue thanh toan'
-    });
-
-    if (depositDeduction > 0) {
       await Commission.create({
         nhan_vien_id: brokerId,
-        hop_dong_thue_id: contract.id,
-        so_tien: depositDeduction,
-        loai: 'deduction',
-        trang_thai: 'earned'
-      });
+        hop_dong_thue_id: createdContract.id,
+        so_tien: commissionAmount,
+        loai: 'commission',
+        trang_thai: 'pending'
+      }, { transaction });
 
-      await depositContract.update({
-        trang_thai: 'terminated',
-        ghi_chu: 'Tien dam bao da duoc khau tru vao hoa hong sau khi nha duoc thue'
-      });
-
-      await logTransaction({
-        user_id: property.chu_nha_id,
-        actor_id: req.user.id,
-        loai_giao_dich: 'deposit_deduction',
-        so_tien: depositDeduction,
-        doi_tuong: 'deposit_contract',
-        doi_tuong_id: depositContract.id,
-        mo_ta: 'Khau tru tien dam bao cua chu nha sau khi nha duoc chot thue'
-      });
-    }
-
-    if (appointmentId) {
       await Appointment.update(
         { trang_thai: 'completed', nhan_vien_id: brokerId },
-        { where: { id: appointmentId } }
+        { where: { id: appointmentId }, transaction }
       );
-    }
 
-    await Property.update(
-      { hien_thi_chi_tiet: false, broker_id: brokerId },
-      { where: { id: nha_cho_thue_id } }
-    );
+      await Property.update(
+        { hien_thi_chi_tiet: false, broker_id: brokerId },
+        { where: { id: nha_cho_thue_id }, transaction }
+      );
+
+      return createdContract;
+    });
 
     res.status(201).json({ success: true, message: 'Lap hop dong thanh cong. Dang cho khach hang thanh toan.', data: contract });
   } catch (error) {
@@ -305,34 +265,118 @@ exports.payRent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Hop dong khong o trang thai cho thanh toan' });
     }
 
-    await contract.update({ trang_thai: 'paid' });
-    
-    // Cap nhat hoa hong thanh earned
-    await Commission.update({ trang_thai: 'earned' }, { where: { hop_dong_thue_id: contract.id, loai: 'commission' } });
+    const property = await Property.findByPk(contract.nha_cho_thue_id);
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Khong thay nha cho thue cua hop dong nay' });
+    }
 
-    await logTransaction({
-      user_id: req.user.id,
-      actor_id: req.user.id,
-      loai_giao_dich: 'rent_payment',
-      so_tien: contract.gia_tri_hop_dong,
-      doi_tuong: 'rental_contract',
-      doi_tuong_id: contract.id,
-      mo_ta: 'Khach thue thanh toan hop dong thue nha'
+    const landlord = await User.findByPk(property.chu_nha_id);
+    const broker = await User.findByPk(contract.nhan_vien_id);
+    if (!hasBankAccount(landlord)) {
+      return res.status(400).json({ success: false, message: 'Chu nha chua co thong tin tai khoan ngan hang de nhan tien' });
+    }
+    if (!hasBankAccount(broker)) {
+      return res.status(400).json({ success: false, message: 'Moi gioi chua co thong tin tai khoan ngan hang de nhan hoa hong' });
+    }
+
+    const depositContract = await DepositContract.findOne({
+      where: { nha_cho_thue_id: contract.nha_cho_thue_id, trang_thai: 'active' }
     });
 
-    await logTransaction({
-      user_id: contract.nhan_vien_id,
-      actor_id: req.user.id,
-      loai_giao_dich: 'commission_earned',
-      so_tien: contract.tien_hoa_hong,
-      doi_tuong: 'rental_contract',
-      doi_tuong_id: contract.id,
-      mo_ta: 'Hoa hong moi gioi duoc ghi nhan sau khi khach thanh toan'
+    const paymentSummary = await sequelize.transaction(async (transaction) => {
+      const commissionAmount = roundMoney(contract.tien_hoa_hong);
+      const contractValue = roundMoney(contract.gia_tri_hop_dong);
+      const depositDeduction = depositContract ? Math.min(roundMoney(depositContract.tien_dam_bao), commissionAmount) : 0;
+      const landlordReceives = Math.max(contractValue - (commissionAmount - depositDeduction), 0);
+      const landlordPaysExtra = Math.max(commissionAmount - depositDeduction, 0);
+      const landlordNewBalance = roundMoney(landlord.account_balance) + landlordReceives;
+      const brokerNewBalance = roundMoney(broker.account_balance) + commissionAmount;
+
+      const [updatedContracts] = await RentalContract.update(
+        { trang_thai: 'active' },
+        { where: { id: contract.id, trang_thai: 'pending_payment' }, transaction }
+      );
+      if (updatedContracts !== 1) {
+        const error = new Error('Hop dong da duoc thanh toan truoc do');
+        error.status = 409;
+        throw error;
+      }
+
+      await Commission.update(
+        { trang_thai: 'earned' },
+        { where: { hop_dong_thue_id: contract.id, loai: 'commission' }, transaction }
+      );
+
+      await landlord.update({
+        account_balance: landlordNewBalance
+      }, { transaction });
+
+      await broker.update({
+        account_balance: brokerNewBalance
+      }, { transaction });
+
+      await logTransaction({
+        user_id: req.user.id,
+        actor_id: req.user.id,
+        loai_giao_dich: 'rent_payment',
+        so_tien: contractValue,
+        doi_tuong: 'rental_contract',
+        doi_tuong_id: contract.id,
+        mo_ta: `Khách thuê thanh toán hợp đồng ${contractValue.toLocaleString('vi-VN')} VND cho đại lý.`
+      }, { transaction });
+
+      await logTransaction({
+        user_id: landlord.id,
+        actor_id: req.user.id,
+        loai_giao_dich: 'landlord_payout',
+        so_tien: landlordReceives,
+        doi_tuong: 'rental_contract',
+        doi_tuong_id: contract.id,
+        mo_ta: `Chuyển ${landlordReceives.toLocaleString('vi-VN')} VND vào tài khoản ${landlord.bank_name} ${landlord.bank_account_number} của chủ nhà. Phí môi giới ${commissionAmount.toLocaleString('vi-VN')} VND, đã cấn trừ đảm bảo ${depositDeduction.toLocaleString('vi-VN')} VND, đại lý giữ lại ${landlordPaysExtra.toLocaleString('vi-VN')} VND từ tiền thuê.`
+      }, { transaction });
+
+      await logTransaction({
+        user_id: broker.id,
+        actor_id: req.user.id,
+        loai_giao_dich: 'broker_payout',
+        so_tien: commissionAmount,
+        doi_tuong: 'rental_contract',
+        doi_tuong_id: contract.id,
+        mo_ta: `Chuyển hoa hồng ${commissionAmount.toLocaleString('vi-VN')} VND vào tài khoản ${broker.bank_name} ${broker.bank_account_number} của môi giới.`
+      }, { transaction });
+
+      if (depositDeduction > 0) {
+        await depositContract.update({
+          trang_thai: 'terminated',
+          ghi_chu: `Tiền đảm bảo ${depositDeduction.toLocaleString('vi-VN')} VND đã được cấn trừ vào phí môi giới. Khi khách thuê thanh toán, đại lý giữ lại ${landlordPaysExtra.toLocaleString('vi-VN')} VND từ tiền thuê và chuyển ${landlordReceives.toLocaleString('vi-VN')} VND cho chủ nhà.`
+        }, { transaction });
+
+      }
+
+      return {
+        commission_amount: commissionAmount,
+        deposit_deduction: depositDeduction,
+        landlord_pays_extra: landlordPaysExtra,
+        landlord_receives: landlordReceives,
+        landlord_account: {
+          bank_name: landlord.bank_name,
+          bank_account_number: landlord.bank_account_number,
+          bank_account_holder: landlord.bank_account_holder,
+          new_balance: landlordNewBalance
+        },
+        broker_account: {
+          bank_name: broker.bank_name,
+          bank_account_number: broker.bank_account_number,
+          bank_account_holder: broker.bank_account_holder,
+          new_balance: brokerNewBalance
+        }
+      };
     });
 
-    res.json({ success: true, message: 'Thanh toan tien thue nha thanh cong!', data: contract });
+    await contract.reload();
+    res.json({ success: true, message: 'Thanh toan tien thue nha thanh cong!', data: contract, payment_summary: paymentSummary });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(error.status || 500).json({ success: false, message: error.message });
   }
 };
 
@@ -359,8 +403,17 @@ exports.logInteraction = async (req, res) => {
   if (!ensureStaffOrBroker(req, res)) return;
 
   try {
+    const { khach_hang_id, nha_cho_thue_id, ngay_gio, noi_dung_trao_doi, loai_trao_doi } = req.body;
+    if (!khach_hang_id || !noi_dung_trao_doi) {
+      return res.status(400).json({ success: false, message: 'Can chon khach hang va nhap noi dung trao doi' });
+    }
+
     const interaction = await Interaction.create({
-      ...req.body,
+      khach_hang_id,
+      nha_cho_thue_id: nha_cho_thue_id || null,
+      ngay_gio: ngay_gio || new Date(),
+      noi_dung_trao_doi,
+      loai_trao_doi: loai_trao_doi || 'meeting',
       nhan_vien_id: req.user.id
     });
 
@@ -420,6 +473,24 @@ exports.updatePropertyReview = async (req, res) => {
       if (req.body.trang_thai_phap_ly) contractPatch.trang_thai_phap_ly = req.body.trang_thai_phap_ly;
       if (req.body.ghi_chu_phap_ly !== undefined) contractPatch.ghi_chu_phap_ly = req.body.ghi_chu_phap_ly;
       await depositContract.update(contractPatch);
+
+      if (req.body.trang_thai_hop_dong === 'pending_deposit') {
+        await Appointment.update(
+          {
+            trang_thai: 'completed',
+            last_message: 'Nhan vien da hoan tat khao sat va duyet thong tin ky gui. Chu nha vui long nop tien dam bao.',
+            last_message_by: 'staff'
+          },
+          {
+            where: {
+              khach_hang_id: property.chu_nha_id,
+              nha_cho_thue_id: property.id,
+              loai_lich_hen: 'deposit_survey',
+              trang_thai: { [Op.in]: ['pending', 'proposed', 'confirmed', 'rejected'] }
+            }
+          }
+        );
+      }
 
       if (req.body.lich_khao_sat) {
         const message = req.body.message || 'Nhan vien van phong de xuat lich khao sat nha ky gui.';

@@ -1,4 +1,5 @@
 const { Appointment, DepositContract, Property, User } = require('../models');
+const { Op } = require('sequelize');
 
 exports.createAppointment = async (req, res) => {
   try {
@@ -12,6 +13,22 @@ exports.createAppointment = async (req, res) => {
     const property = await Property.findByPk(nha_cho_thue_id);
     if (!property) return res.status(404).json({ success: false, message: 'Khong thay nha' });
 
+    if (!property.hien_thi_chi_tiet) {
+      return res.status(400).json({ success: false, message: 'Nha nay chua san sang cho khach dat lich xem' });
+    }
+
+    const depositContract = await DepositContract.findOne({
+      where: { nha_cho_thue_id, trang_thai: 'active' }
+    });
+    if (!depositContract) {
+      return res.status(400).json({ success: false, message: 'Nha nay chua co hop dong ky gui dang hieu luc' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (depositContract.ngay_het_han && depositContract.ngay_het_han < today) {
+      return res.status(400).json({ success: false, message: 'Hop dong ky gui cua nha nay da het han, khong the dat lich xem' });
+    }
+
     if (property.chu_nha_id === khach_hang_id) {
       return res.status(400).json({ success: false, message: 'Ban khong the dat lich xem chinh nha minh dang' });
     }
@@ -20,7 +37,7 @@ exports.createAppointment = async (req, res) => {
       where: {
         khach_hang_id,
         nha_cho_thue_id,
-        trang_thai: ['pending', 'proposed', 'confirmed']
+        trang_thai: { [Op.in]: ['pending', 'proposed', 'confirmed'] }
       }
     });
 
@@ -44,7 +61,7 @@ exports.createAppointment = async (req, res) => {
 
         for (const broker of brokers) {
           const propCount = await Property.count({ where: { broker_id: broker.id } });
-          const apptCount = await Appointment.count({ where: { nhan_vien_id: broker.id, trang_thai: ['pending', 'proposed', 'confirmed'] } });
+          const apptCount = await Appointment.count({ where: { nhan_vien_id: broker.id, trang_thai: { [Op.in]: ['pending', 'proposed', 'confirmed'] } } });
           const customerCount = await User.count({ where: { managed_by_broker_id: broker.id } });
           
           const workload = propCount + apptCount + customerCount;
@@ -99,7 +116,7 @@ exports.getMyAppointments = async (req, res) => {
       include: [
         { model: Property, include: [{ model: User, as: 'Landlord', attributes: ['id', 'full_name', 'phone_number', 'email'] }] },
         { model: User, attributes: ['full_name', 'phone_number', 'email', 'role'] }, // Khach hang/Chu nha info
-        { model: User, as: 'Broker', attributes: ['full_name', 'phone_number'] } // Moi gioi info
+        { model: User, as: 'Broker', attributes: ['full_name', 'phone_number', 'email'] } // Moi gioi info
       ],
       order: [['created_at', 'DESC']]
     });
@@ -118,6 +135,10 @@ exports.updateAppointment = async (req, res) => {
 
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Khong tim thay lich hen' });
+    }
+
+    if (['confirmed', 'completed', 'cancelled', 'no_show'].includes(appointment.trang_thai)) {
+      return res.status(400).json({ success: false, message: 'Lich hen da dong, khong the tiep tuc tuong tac' });
     }
 
     const role = req.user.role;

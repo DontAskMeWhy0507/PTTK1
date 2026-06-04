@@ -34,6 +34,25 @@ const ensureSchema = async () => {
       defaultValue: 'property_viewing'
     });
   }
+
+  const userColumns = await sequelize.getQueryInterface().describeTable('users').catch(() => ({}));
+  const { DataTypes } = require('sequelize');
+  if (!userColumns.bank_name) {
+    await sequelize.getQueryInterface().addColumn('users', 'bank_name', { type: DataTypes.STRING });
+  }
+  if (!userColumns.bank_account_number) {
+    await sequelize.getQueryInterface().addColumn('users', 'bank_account_number', { type: DataTypes.STRING });
+  }
+  if (!userColumns.bank_account_holder) {
+    await sequelize.getQueryInterface().addColumn('users', 'bank_account_holder', { type: DataTypes.STRING });
+  }
+  if (!userColumns.account_balance) {
+    await sequelize.getQueryInterface().addColumn('users', 'account_balance', {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0
+    });
+  }
 };
 
 configureSqlite().then(() => sequelize.sync({ force: false })).then(ensureSchema).then(() => {

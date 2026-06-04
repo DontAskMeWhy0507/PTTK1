@@ -6,7 +6,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUI } from '../contexts/UIContext';
 
 const Register = () => {
-  const [form, setForm] = useState({ email: '', password: '', full_name: '', phone_number: '', role: 'customer' });
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    phone_number: '',
+    role: 'customer',
+    bank_name: '',
+    bank_account_number: '',
+    bank_account_holder: ''
+  });
   const { user } = useAuth();
   const { showNotification } = useUI();
   const navigate = useNavigate();
@@ -57,6 +66,23 @@ const Register = () => {
               <option value="landlord">Chu nha ky gui</option>
             </select>
           </div>
+
+          {form.role === 'landlord' && (
+            <>
+              <div className="form-group">
+                <label>Ngan hang nhan tien *</label>
+                <input name="bank_name" value={form.bank_name} onChange={handleChange} required placeholder="VD: Vietcombank" />
+              </div>
+              <div className="form-group">
+                <label>So tai khoan *</label>
+                <input name="bank_account_number" value={form.bank_account_number} onChange={handleChange} required placeholder="VD: 0123456789" />
+              </div>
+              <div className="form-group">
+                <label>Chu tai khoan *</label>
+                <input name="bank_account_holder" value={form.bank_account_holder} onChange={handleChange} required placeholder="Ten tren tai khoan ngan hang" />
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label>Mat khau *</label>

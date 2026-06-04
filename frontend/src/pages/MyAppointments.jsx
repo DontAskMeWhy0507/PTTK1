@@ -41,6 +41,7 @@ const MyAppointments = () => {
   };
 
   const isDepositSurvey = (appointment) => appointment.loai_lich_hen === 'deposit_survey';
+  const isEditable = (appointment) => ['pending', 'proposed', 'rejected'].includes(appointment.trang_thai);
 
   return (
     <div>
@@ -68,6 +69,12 @@ const MyAppointments = () => {
               <p style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: 8, color: '#4a5568' }}>
                 <User size={16} color="#38a169" /> <strong>{isDepositSurvey(a) ? 'Nhan vien phu trach:' : 'Moi gioi:'}</strong> {a.Broker?.full_name || 'Dang phan cong...'}
               </p>
+              {!isDepositSurvey(a) && a.Broker && (
+                <div style={{ marginTop: 8, fontSize: 13, color: '#4a5568', lineHeight: 1.6 }}>
+                  <div>SDT moi gioi: <strong>{a.Broker.phone_number || 'Chua cap nhat'}</strong></div>
+                  <div>Email moi gioi: <strong>{a.Broker.email || 'Chua cap nhat'}</strong></div>
+                </div>
+              )}
             </div>
 
             {a.last_message && (
@@ -91,7 +98,7 @@ const MyAppointments = () => {
                 </div>
               )}
 
-              {['pending', 'proposed', 'rejected', 'confirmed'].includes(a.trang_thai) && (
+              {isEditable(a) && (
                 <>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <input 
@@ -119,7 +126,13 @@ const MyAppointments = () => {
                 </>
               )}
               
-              {['pending', 'confirmed'].includes(a.trang_thai) && (
+              {a.trang_thai === 'confirmed' && (
+                <div style={{ padding: 12, background: '#f0fff4', borderRadius: 12, color: '#2f855a', fontSize: 13, fontWeight: 600 }}>
+                  Lich hen da duoc chot. Neu can thay doi, vui long lien he truc tiep moi gioi phu trach.
+                </div>
+              )}
+
+              {['pending'].includes(a.trang_thai) && (
                 <button className="btn" style={{ color: '#e53e3e', padding: 0, justifyContent: 'flex-end', fontSize: '13px' }} onClick={() => handleAction(a.id, { trang_thai: 'cancelled', message: `${isDepositSurvey(a) ? 'Chu nha' : 'Khach hang'} da huy lich hen.` })}>
                   Huy lich hen nay
                 </button>

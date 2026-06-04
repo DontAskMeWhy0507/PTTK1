@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { downloadContractDocument, getMyRentalContracts, getRentalContractDetail, uploadContractDocument, payRent } from '../api';
 import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,8 @@ const MyRentalContracts = () => {
   const [contracts, setContracts] = useState([]);
   const [documentsByContract, setDocumentsByContract] = useState({});
   const [paymentModal, setPaymentModal] = useState(null);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
+  const payingRef = useRef(false);
   const { showNotification } = useUI();
   const { user } = useAuth();
 
@@ -42,7 +43,8 @@ const MyRentalContracts = () => {
   useEffect(() => {
     let timer;
     if (paymentModal) {
-      setCountdown(10);
+      payingRef.current = false;
+      setCountdown(5);
       timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
@@ -58,14 +60,22 @@ const MyRentalContracts = () => {
   }, [paymentModal]);
 
   const executePayment = async (id) => {
+    if (payingRef.current) return;
+    payingRef.current = true;
     try {
-      await payRent(id);
-      showNotification('Thanh toan tien thue nha thanh cong!', 'success');
+      const res = await payRent(id);
+      const summary = res.data?.payment_summary;
+      const message = summary
+        ? `Thanh toán thành công. Chủ nhà nhận ${Number(summary.landlord_receives || 0).toLocaleString('vi-VN')}đ, môi giới nhận ${Number(summary.commission_amount || 0).toLocaleString('vi-VN')}đ.`
+        : 'Thanh toán tiền thuê nhà thành công.';
+      showNotification(message, 'success');
       setPaymentModal(null);
       loadContracts();
     } catch (error) {
       showNotification(error.response?.data?.message || 'Loi thanh toan', 'error');
       setPaymentModal(null);
+    } finally {
+      payingRef.current = false;
     }
   };
 
@@ -127,9 +137,9 @@ const MyRentalContracts = () => {
                 <X size={20} color="#718096" />
               </button>
             </div>
-            <h3>Thanh toan tien thue nha</h3>
+            <h3>Thanh toán tiền thuê nhà</h3>
             <p style={{ fontSize: '18px', fontWeight: 800, color: '#2d3748', margin: '16px 0' }}>
-              So tien: {Number(paymentModal.gia_tri_hop_dong || 0).toLocaleString('vi-VN')} VNĐ
+              Số tiền: {Number(paymentModal.gia_tri_hop_dong || 0).toLocaleString('vi-VN')} VNĐ
             </p>
             <div style={{ background: '#f7fafc', padding: 24, borderRadius: 16, marginBottom: 24 }}>
               <img 
@@ -139,7 +149,7 @@ const MyRentalContracts = () => {
               />
             </div>
             <div style={{ padding: '16px', background: '#ebf8ff', borderRadius: '12px', color: '#2c5282' }}>
-               He thong dang xac nhan sau {countdown} giay...
+               Hệ thống sẽ tự xác nhận sau {countdown} giây...
             </div>
           </div>
         </div>
@@ -152,7 +162,7 @@ const MyRentalContracts = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {contracts.map((contract) => (
           <div key={contract.id} className="stat-card" style={{ maxWidth: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 32 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 32 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                   <Home size={20} color="#3182ce" />
@@ -163,6 +173,12 @@ const MyRentalContracts = () => {
                   <User size={16} color="#718096" />
                   <span>Moi gioi: <strong>{contract.Broker?.full_name || '---'}</strong></span>
                 </div>
+                {contract.Broker && (
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#4a5568', lineHeight: 1.6 }}>
+                    <div>SDT moi gioi: <strong>{contract.Broker.phone_number || 'Chua cap nhat'}</strong></div>
+                    <div>Email moi gioi: <strong>{contract.Broker.email || 'Chua cap nhat'}</strong></div>
+                  </div>
+                )}
               </div>
 
               <div>
